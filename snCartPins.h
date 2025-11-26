@@ -22,3 +22,10 @@ public:
 	void Enable();
 	void Disable();
 };
+
+class SNReadEnablePin : public CartPin
+{
+public:
+	void Enable();
+	void Disable();
+};

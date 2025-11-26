@@ -16,24 +16,19 @@ void SuperCopierSN::Create(gpiod_chip* pChip)
 {
 	// Address
 	uint8_t addressLineIndices[] = { 2,3,4,17,27,22,10,9 };
-	uint8_t latch8Thru15LineIndex = 5;
-	uint8_t bankAddressBusIndices[] = { 6,13,19,26 };
-	uint8_t latch16Thru19Index = 16;
-	mAddressBus.Create(pChip, addressLineIndices, latch8Thru15LineIndex, bankAddressBusIndices, latch16Thru19Index);
+	uint8_t latch1 = 5;
+	uint8_t latch2 = 16;
+	mAddressBus.Create(pChip, addressLineIndices, latch1, latch2);
 
 	// Data
 	uint8_t dataLineIndices[] = { 14,15,18,23,24,25,8,7 };
 	mDataBus.Create(pChip, dataLineIndices);
 
 	// Misc Pins
-	uint8_t writeLineIndex = 12;
-	mWriteEnablePin.Create(pChip, writeLineIndex);
-
-	uint8_t resetLineIndex = 21;
-	mResetPin.Create(pChip, resetLineIndex);
-
-	uint8_t cartEnableLineIndex = 20;
-	mCartEnablePin.Create(pChip, cartEnableLineIndex);
+	mWriteEnablePin.Create(pChip, 12);
+	mReadEnablePin.Create(pChip, 6);
+	mResetPin.Create(pChip, 21);
+	mCartEnablePin.Create(pChip, 20);
 }
 
 SuperCopierSN::~SuperCopierSN()
@@ -46,6 +41,7 @@ void SuperCopierSN::Release()
 	mCartEnablePin.Release();
 	mResetPin.Release();
 	mWriteEnablePin.Release();
+	mReadEnablePin.Release();
 
 	mDataBus.Release();
 	mAddressBus.Release();
@@ -84,6 +80,9 @@ void SuperCopierSN::UploadToSRAM(const char* pRomName, uint32_t sramSize)
 		mWriteEnablePin.Disable();
 		WAIT();
 
+		mReadEnablePin.Enable();
+		WAIT();
+
 		// Disable cartEnable (disable the ROM/SRAM chips)
 		mCartEnablePin.Disable();
 		WAIT();
@@ -105,6 +104,9 @@ void SuperCopierSN::UploadToSRAM(const char* pRomName, uint32_t sramSize)
 		mWriteEnablePin.Enable();
 		WAIT();
 
+		mReadEnablePin.Disable();
+		WAIT();
+
 		// Put the byte on the dataBus
 		printf("%x: %x\n", address, mSRAMBuffer[i]);
 		mDataBus.Write(mSRAMBuffer[i]);
@@ -112,6 +114,9 @@ void SuperCopierSN::UploadToSRAM(const char* pRomName, uint32_t sramSize)
 
 		// Disable writeEnable so SRAM can latch the bytes
 		mWriteEnablePin.Disable();
+		WAIT();
+
+		mReadEnablePin.Enable();
 		WAIT();
 
 		// Put the dataBus into HiZ
@@ -259,6 +264,9 @@ void SuperCopierSN::SetCartToIdleState()
 	mWriteEnablePin.Disable();
 	WAIT();
 
+	mReadEnablePin.Enable();
+	WAIT();
+
 	// Disable cartEnable (disable the ROM/SRAM chips)
 	mCartEnablePin.Disable();
 	WAIT();
@@ -281,6 +289,69 @@ void SuperCopierSN::PrintGameInfo(const char* pRomName, uint32_t numBanks, uint3
 	printf("   Bank Size: 0x%x\n", bankSize);
 	printf("   SRAM Size: 0x%x\n", sramSize);
 	printf("=-=-=-=-=-\n");
+}
+
+void SuperCopierSN::TestAddresses()
+{
+	SetCartToIdleState();
+	WAIT();
+
+	printf("Setting Cart State to Idle\n");
+	printf("/WR:Disabled\n");
+	printf("/RD:Enabled\n");
+	printf("/CART:Disabled\n");
+	printf("DataBus:HiZ\n");
+	printf("AddressBus:HiZ\n");
+
+	printf("Press any key to continue.\n");
+	while (!getchar())
+	{
+	}
+
+	printf("Walking memory addresses.\n");
+	for (uint32_t i = 0; i < 0xFFFFFF; i++)
+	{
+		// Disable the cartEnable (disable the rom/sram chips)
+		mCartEnablePin.Disable();
+		WAIT();
+
+		// Set the address to read a byte from
+		printf("Setting Address to: %x\n", i);
+		mAddressBus.SetAddress(i);
+		WAIT();
+
+		// Set the dataBus to HiZ
+		mDataBus.HiZ();
+		WAIT();
+
+		// Now we're read, so enable the cartEnable
+		mCartEnablePin.Enable();
+		WAIT();
+
+		// Grab the byte off the lines
+		uint8_t value = mDataBus.Read();
+		WAIT();
+		printf("Address %x: Data %x\n", i, value);
+
+		mDataBus.HiZ();
+		WAIT();
+		
+		printf("Press X to stop. Press any other key to continue.\n");
+		int inputChoice = 0;
+		int c = 0;
+		do
+		{
+			c = getchar();
+			if (c != '\n')
+			{
+				inputChoice = c;
+			}
+		} while (c != '\n');
+		if (inputChoice == 'x')
+		{
+			break;
+		}
+	}
 }
 
 void SuperCopierSN::Execute()
@@ -321,6 +392,7 @@ void SuperCopierSN::Execute()
 		printf("[D]ownload from SRAM\n");
 		printf("[U]pload to SRAM\n");
 		printf("Dump [R]OM\n");
+		printf("[T]est Addresses\n");
 		printf("E[x]it\n");
 		printf("=-=-=-=-=-=-=-\n");
 		printf("Your Selection: ");
@@ -358,13 +430,19 @@ void SuperCopierSN::Execute()
 				DumpROM(gameName, numBanks, bankSize);
 				break;
 			}
+
+			case 't':
+			{
+				TestAddresses();
+				break;
+			}
 			
 			case 'x':
 			{
 				shouldExit = true;
 				break;
 			}
-			
+
 			default:
 			{
 				printf("Unknown choice '%c'\n", inputChoice);

@@ -36,3 +36,15 @@ void SNWriteEnablePin::Disable()
 	PullHigh();
 }
 // End SNWriteEnablePin
+
+// SNReadEnablePin
+void SNReadEnablePin::Enable()
+{
+	PullLow();
+}
+
+void SNReadEnablePin::Disable()
+{
+	PullHigh();
+}
+// End SNReadEnablePin

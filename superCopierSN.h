@@ -31,12 +31,15 @@ private:
 
 	void PrintGameInfo(const char* pRomName, uint32_t numBanks, uint32_t bankSize, uint32_t sramSize);
 
+	void TestAddresses();
+
 private:
 	// Controls address lines A0 - A15 with support of a latch and A16-A23 (Bank Addresses BA0-BA7) with another latch.
-	AddressBus<8, 4> mAddressBus;
+	AddressBus<8> mAddressBus;
 	DataBus<8> mDataBus;
 
 	SNWriteEnablePin mWriteEnablePin;
+	SNReadEnablePin mReadEnablePin;
 	SNResetPin mResetPin;
 	SNCartEnablePin mCartEnablePin;
 

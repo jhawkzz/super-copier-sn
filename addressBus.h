@@ -6,7 +6,7 @@
 #include "defines.h"
 #include "gpioLine.h"
 
-template<int NumLines, int NumBankLines>
+template<int NumLines>
 class AddressBus
 {
 public:
@@ -15,7 +15,7 @@ public:
 		Release();
 	}
 	
-	void Create(gpiod_chip* pChip, uint8_t* pGPIOVals, uint8_t latchVal, uint8_t* pBankGPIOVals, uint8_t bankLatchVal)
+	void Create(gpiod_chip* pChip, uint8_t* pGPIOVals, uint8_t latch1Val, uint8_t latch2Val)
 	{
 		if (!pChip)
 		{
@@ -28,24 +28,14 @@ public:
 			mLines[i].Create(pChip, pGPIOVals[i]);
 		}
 
-		for (uint32_t i = 0; i < NumBankLines; i++)
-		{
-			mBankLines[i].Create(pChip, pBankGPIOVals[i]);
-		}
-
-		mLatch.Create(pChip, latchVal);
-		mBankLatch.Create(pChip, bankLatchVal);
+		mLatch1.Create(pChip, latch1Val);
+		mLatch2.Create(pChip, latch2Val);
 	}
 
 	void Release()
 	{
-		mBankLatch.Release();
-		mLatch.Release();
-
-		for (uint32_t i = 0; i < NumBankLines; i++)
-		{
-			mBankLines[i].Release();
-		}
+		mLatch2.Release();
+		mLatch1.Release();
 
 		for (uint32_t i = 0; i < NumLines; i++)
 		{
@@ -55,109 +45,98 @@ public:
 
 	void HiZ()
 	{
-		// prepare the latch 
-		mLatch.Write(1);
+		// Set lines 0-7:
+		// open the latch
+		mLatch1.Write(1);
 		WAIT();
 
-		// set the low values
+		// set lines 0-7
 		for (int32_t i = 0; i < NumLines; i++)
 		{
 			mLines[i].HiZ();
 		}
 
-		// prepare the latch 
-		mLatch.Write(0);
+		// latch them
+		mLatch1.Write(0);
+		WAIT();
+		//
+
+		// Set lines 8-15:
+		// open the latch
+		mLatch2.Write(1);
 		WAIT();
 
-		// set the high values
+		// set lines 8-15
 		for (int32_t i = 0; i < NumLines; i++)
 		{
 			mLines[i].HiZ();
 		}
 
-
-		// prepare the latch 
-		mBankLatch.Write(1);
+		// latch them
+		mLatch2.Write(0);
 		WAIT();
+		//
 
-		// set the low values
-		for (int32_t i = 0; i < NumBankLines; i++)
+		// Set lines 16-23:
+		for (int32_t i = 0; i < NumLines; i++)
 		{
-			mBankLines[i].HiZ();
-		}
-
-		// prepare the latch 
-		mBankLatch.Write(0);
-		WAIT();
-
-		// set the high values
-		for (int32_t i = 0; i < NumBankLines; i++)
-		{
-			mBankLines[i].HiZ();
+			mLines[i].HiZ();
 		}
 	}
 
 	void SetAddress(uint32_t value)
 	{
-		uint8_t lowVals = value & 0x00FF;
-		uint8_t highVals = (value & 0xFF00) >> 8;
-		uint8_t bankVals = (value & 0xFF0000) >> 16;
+		uint8_t addr0Thru7 = value & 0x00FF;
+		uint8_t addr8Thru15 = (value & 0xFF00) >> 8;
+		uint8_t addr16Thru23 = (value & 0xFF0000) >> 16;
 
 		//printf("requesting address: %d, low: %d, high: %d\n", value, lowVals, highVals);
 
-		// SET ADDRESS LINES
-
-		// prepare the latch 
-		mLatch.Write(1);
+		// SET ADDRESS LINES 0-7
+		// Prepare
+		mLatch1.Write(1);
 		WAIT();
 
-		// set the low values
+		// Set
 		for (int32_t i = 0; i < NumLines; i++)
 		{
 			//printf("Set low value bit %d: %d\n", i, (lowVals >> i) & 0x1);
-			mLines[i].Write((lowVals >> i) & 0x1);
+			mLines[i].Write((addr0Thru7 >> i) & 0x1);
 		}
 
-		// set the latch 
-		mLatch.Write(0);
+		// Latch
+		mLatch1.Write(0);
+		WAIT();
+		// END ADDRESS LINES 0-7
+
+		// SET ADDRESS LINES 8-15
+		// Prepare
+		mLatch2.Write(1);
 		WAIT();
 
-		// set the high values
+		// Set
 		for (int32_t i = 0; i < NumLines; i++)
 		{
 			//printf("Set high value bit %d: %d\n", i, (highVals >> i) & 0x1);
-			mLines[i].Write((highVals >> i) & 0x1);
+			mLines[i].Write((addr8Thru15 >> i) & 0x1);
 		}
 
-
-		// SET BANK LINES
-		uint8_t lowBankVals = bankVals & 0xF;
-		uint8_t highBankVals = (bankVals & 0xF0) >> 4;
-
-		// prepare the bank latch 
-		mBankLatch.Write(1);
+		// Latch
+		mLatch2.Write(0);
 		WAIT();
+		// END ADDRESS LINES 8-15
 
-		// set the low values
-		for (int32_t i = 0; i < NumBankLines; i++)
+		// SET ADDRESS LINES 16-23
+		for (int32_t i = 0; i < NumLines; i++)
 		{
-			mBankLines[i].Write((lowBankVals >> i) & 0x1);
+			//printf("Set high value bit %d: %d\n", i, (highVals >> i) & 0x1);
+			mLines[i].Write((addr16Thru23 >> i) & 0x1);
 		}
-
-		// set the latch
-		mBankLatch.Write(0);
-		WAIT();
-
-		// set the high values 
-		for (int32_t i = 0; i < NumBankLines; i++)
-		{
-			mBankLines[i].Write((highBankVals >> i) & 0x1);
-		}
+		// END ADDRESS LINES 16-23
 	}
 	
 private:
 	GPIOLine mLines[NumLines];
-	GPIOLine mBankLines[NumBankLines];
-	GPIOLine mLatch;
-	GPIOLine mBankLatch;
+	GPIOLine mLatch1;
+	GPIOLine mLatch2;
 };
