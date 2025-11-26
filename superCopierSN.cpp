@@ -354,6 +354,43 @@ void SuperCopierSN::TestAddresses()
 	}
 }
 
+void SuperCopierSN::ReadHeader()
+{
+	SetCartToIdleState();
+	WAIT();
+
+	// Disable the cartEnable (disable the rom/sram chips)
+	mCartEnablePin.Disable();
+	WAIT();
+
+	for (uint32_t i = 0; i < LOROM_HEADER_BYTES; i++)
+	{
+		// Disable the cartEnable (disable the rom/sram chips)
+		mCartEnablePin.Disable();
+		WAIT();
+
+		// Set the address to read a byte from
+		mAddressBus.SetAddress(i + ROM_HEADER_ADDRESS);
+		WAIT();
+
+		// Set the dataBus to HiZ
+		mDataBus.HiZ();
+		WAIT();
+
+		// Now we're read, so enable the cartEnable
+		mCartEnablePin.Enable();
+		WAIT();
+
+		// Grab the byte off the lines
+		uint8_t value = mDataBus.Read();
+		WAIT();
+		mROMHeader.mBuffer[i] = value;
+		
+		mDataBus.HiZ();
+		WAIT();
+	}
+}
+
 void SuperCopierSN::Execute()
 {
 	// Setup for a game to be inserted.
@@ -371,9 +408,13 @@ void SuperCopierSN::Execute()
 	{
 	}
 
+	ReadHeader();
+
 	//todo: write a function to read the ROM header and detect the game. Then, give them the chance to change it.
 	// for now...
-	const char gameName[] = "SUPERMARIOWORLD";
+	//const char gameName[] = "SUPERMARIOWORLD";
+	char gameName[22] = { 0 };
+	strncpy(gameName, (const char*)mROMHeader.mValues.mCartTitle, sizeof(gameName) - 1);
 	const uint32_t numBanks = 0x10; //smw
 	const uint32_t bankSize = 32768;//smw
 	const uint32_t sramSize = 2048;//smw

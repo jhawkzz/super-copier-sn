@@ -8,6 +8,34 @@
 #define SRAM_BUFFER_SIZE (1024 * 1024)
 #define ROM_BUFFER_SIZE (1024 * 1024 * 10)
 
+#define LOROM_HEADER_BYTES (32)
+#define ROM_HEADER_ADDRESS (0x7FC0)
+
+struct LoROMHeader
+{
+	LoROMHeader() {}
+
+	struct Values
+	{
+		uint8_t mCartTitle[21] = { 0 };
+		uint8_t mROMType = 0;
+		uint8_t mChipset = 0;
+		uint8_t mROMSize = 0;
+		uint8_t mRAMSize = 0;
+		uint8_t mCountryCode = 0;
+		uint8_t mDeveloperID = 0;
+		uint8_t mROMVersion = 0;
+		uint8_t mChecksumComplement[2] = { 0 };
+		uint8_t mChecksum[2] = { 0 };
+	};
+
+	union
+	{
+		Values mValues;
+		uint8_t mBuffer[sizeof(Values)] = { 0 };
+	};
+};
+
 class SuperCopierSN
 {
 public:
@@ -31,6 +59,8 @@ private:
 
 	void PrintGameInfo(const char* pRomName, uint32_t numBanks, uint32_t bankSize, uint32_t sramSize);
 
+	void ReadHeader();
+
 	void TestAddresses();
 
 private:
@@ -45,4 +75,5 @@ private:
 
 	uint8_t mSRAMBuffer[SRAM_BUFFER_SIZE];
 	uint8_t mROMBuffer[ROM_BUFFER_SIZE];
+	LoROMHeader mROMHeader;
 };
