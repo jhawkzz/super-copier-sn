@@ -1,39 +1,23 @@
 Schematic that works
 ====================
-GPIO 2 -> Run to Latch 1 Input 1, Run to Latch 2 Input 1, Run to Cart Address 16
-GPIO 3 -> Run to Latch 1 Input 2, Run to Latch 2 Input 2, Run to Cart Address 17
-GPIO 4 -> Run to Latch 1 Input 3, Run to Latch 2 Input 3, Run to Cart Address 18
-GPIO 17-> Run to Latch 1 Input 4, Run to Latch 2 Input 4, Run to Cart Address 19
-GPIO 27-> Run to Latch 1 Input 5, Run to Latch 2 Input 5, Run to Cart Address 20
-GPIO 22-> Run to Latch 1 Input 6, Run to Latch 2 Input 6, Run to Cart Address 21
-GPIO 10-> Run to Latch 1 Input 7, Run to Latch 2 Input 7, Run to Cart Address 22
-GPIO 09-> Run to Latch 1 Input 8, Run to Latch 2 Input 8, Run to Cart Address 23
+GPIO 2 (3)   -> Run to Latch 1 Input 1, Run to Latch 2 Input 1, Run to Cart Address 16
+GPIO 3 (5)   -> Run to Latch 1 Input 2, Run to Latch 2 Input 2, Run to Cart Address 17
+GPIO 4 (7)   -> Run to Latch 1 Input 3, Run to Latch 2 Input 3, Run to Cart Address 18
+GPIO 17 (11) -> Run to Latch 1 Input 4, Run to Latch 2 Input 4, Run to Cart Address 19
+GPIO 27 (13) -> Run to Latch 1 Input 5, Run to Latch 2 Input 5, Run to Cart Address 20
+GPIO 22 (15) -> Run to Latch 1 Input 6, Run to Latch 2 Input 6, Run to Cart Address 21
+GPIO 10 (19) -> Run to Latch 1 Input 7, Run to Latch 2 Input 7, Run to Cart Address 22
+GPIO 09 (21) -> Run to Latch 1 Input 8, Run to Latch 2 Input 8, Run to Cart Address 23
 
-GPIO 5  -> latch 1 LE
-GPIO 16 -> Latch 2 LE
-GPIO 20 -> /ROMSEL (/Cart)
-gpio 12 -> /WRITEENABLE
-gpio 6  -> /readenable
-gpio 21 -> /reset
+GPIO 5 (29)  -> latch 1 LE
+GPIO 16 (36) -> Latch 2 LE
+GPIO 20 (38) -> /ROMSEL (/Cart)
+gpio 12 (32) -> /WRITEENABLE
+gpio 6  (31) -> /readenable
+gpio 21 (40) -> /reset
 
-Latch 1 output 1, Run to Cart Address 0
-Latch 1 output 2, Run to Cart Address 1
-Latch 1 output 3, Run to Cart Address 2
-Latch 1 output 4, Run to Cart Address 3
-Latch 1 output 5, Run to Cart Address 4
-Latch 1 output 6, Run to Cart Address 5
-Latch 1 output 7, Run to Cart Address 6
-Latch 1 output 8, Run to Cart Address 7
-
-Latch 2 output 1, Run to Cart Address 8
-Latch 2 output 2, Run to Cart Address 9
-Latch 2 output 3, Run to Cart Address 10
-Latch 2 output 4, Run to Cart Address 11
-Latch 2 output 5, Run to Cart Address 12
-Latch 2 output 6, Run to Cart Address 13
-Latch 2 output 7, Run to Cart Address 14
-Latch 2 output 8, Run to Cart Address 15
-
+All Grounds: GND (6)
+All 5v: 5V (2)
 
 PI to SNES 62-Pin Mapping:
 ==========================
@@ -57,47 +41,6 @@ GPIO13 (33) (34) GND
 GPIO19 (35) (36) GPIO16
 GPIO26 (37) (38) GPIO20
    GND (39) (40) GPIO21
-
-				SNES (front) | Cart  |  SNES (back)
-							  _______
-							 |       |
-[NOT CONNECTED]SYSTEM CLK -> |01   32| <- /WRAMSEL [NOT CONNECTED]
-[NOT CONNECTED]    EXPAND <> |02   33| <- REFRESH  [NOT CONNECTED]
-[NOT CONNECTED]		  PA6 -> |03   34| <- PA7 	   [NOT CONNECTED]
-[NOT CONNECTED]		 /PRD -> |04   35| <- /PWR	   [NOT CONNECTED]
-							 |_______|
-							 |       |
-GND (6)				  GND -- |05   36| -- GND			GND (6)
-GPIO19 (35)		  CPU A11 -> |06   37| <- CPU A12		GPIO26 (37)
-GPIO13 (33)		  CPU A10 -> |07   38| <- CPU A13		GPIO16 (36)
-GPIO6 (31)		   CPU A9 -> |08   39| <- CPU A14		GPIO20 (38)
-GPIO5 (29)		   CPU A8 -> |09   40| <- CPU A15		GND (6)
-GPIO9 (21)		   CPU A7 -> |10   41| <- CPU A16		GND (6)
-GPIO10 (19)		   CPU A6 -> |11   42| <- CPU A17		GND (6)
-GPIO22 (15)		   CPU A5 -> |12   43| <- CPU A18		GND (6)
-GPIO27 (13)		   CPU A4 -> |13   44| <- CPU A19		GND (6)
-GPIO17 (11)		   CPU A3 -> |14   45| <- CPU A20		5V (2)	
-GPIO4  (7)		   CPU A2 -> |15   46| <- CPU A21   	5V (2) 						Orientation:
-GPIO3  (5)		   CPU A1 -> |16   47| <- CPU A22   	5V (2) 						-----------------------
-GPIO2  (3)		   CPU A0 -> |17   48| <- CPU A23   	GND (6)		 				 ______________________
-GND (6)				 /IRQ <- |18   49| <- /ROMSEL   	GND (6)						|               (----)|\
-GPIO14 (8)		   CPU D0 <> |19   50| <> CPU D4    	GPIO24 (18)    				|                     | '
-GPIO15 (10)		   CPU D1 <> |20   51| <> CPU D5    	GPIO25 (22)    				|                     | |
-GPIO18 (12)		   CPU D2 <> |21   52| <> CPU D6    	GPIO8 (24)     				|_____________________| | 
-GPIO23	(16)	   CPU D3 <> |22   53| <> CPU D7    	GPIO7 (26)     				|  '               '  |\|
-[INVERTER 6Y]	  CPU /RD -> |23   54| <- CPU /WR 		GPIO12 (32) -> [INVERTER 6A]| 32_______________62 | |
-GND (6)		   CIC data 1 <> |24   55| <> CIC data 2	GND (6)   					|__|_________|__|  | |
-GND (6)		key CIC reset -> |25   56| -> CIC CLK   	GND (6)    					|  1 ....          31 | |
-GPIO21 (40)		   /RESET <> |26   57| <- PHI2      	GND (6)     				|_____________________| |
-5V (2)				  +5V -- |27   58| -- +5V			(2)  5V						|  |_____|___|_____|  |\|
-							 |_______|                     							| :| --- |   | --^ |  | |
-							 |       |                     							|  |_____|   |_____|  | |
-[NOT CONNECTED]		  PA0 -> |28   59| <- PA1				[NOT CONNECTED]			|  |     | _ |     |  | |
-[NOT CONNECTED]		  PA2 -> |29   60| <- PA3   			[NOT CONNECTED]			|  |     |___|     |  | |
-[NOT CONNECTED]		  PA4 -> |30   61| <- PA5   			[NOT CONNECTED]			|  |     |   |     |  | |
-[NOT CONNEC]left audio in <- |31   62| -> right audio in   	[NOT CONNECTED]			'--|_____|---|_____|--' |
-							 |_______|                     							 \*_\_____\___\_____\__\|
-
 
 DO NOT USE GPIO_0 or GPIO_1
 
