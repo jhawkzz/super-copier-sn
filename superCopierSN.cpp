@@ -280,14 +280,33 @@ void SuperCopierSN::SetCartToIdleState()
 	WAIT();
 }
 
-void SuperCopierSN::PrintGameInfo(const char* pRomName, uint32_t numBanks, uint32_t bankSize, uint32_t sramSize)
+void SuperCopierSN::PrintGameInfo(const ROMHeader& romHeader)
 {
+	char title[22] = { 0 };
+	char region[20] = { 0 };
+	char mapMode[50] = { 0 };
+	char cartType[50] = { 0 };
+
+	romHeader.GetTitle(title, sizeof(title));
+	romHeader.GetRegion(region, sizeof(region));
+	romHeader.GetMapMode(mapMode, sizeof(mapMode));
+	romHeader.GetCartType(cartType, sizeof(cartType));
+
 	printf("Game Info\n");
 	printf("=-=-=-=-=-\n");
-	printf("   Name: %s\n", pRomName);
-	printf("   Num Banks: 0x%x\n", numBanks);
-	printf("   Bank Size: 0x%x\n", bankSize);
-	printf("   SRAM Size: 0x%x\n", sramSize);
+	printf("   Name: %s\n", title);
+	printf("   Region: %s\n", region);
+	printf("   Map Mode: %s\n", mapMode);
+	printf("   Cart Type: %s\n", cartType);
+	printf("   Has SRAM: %s\n", romHeader.HasSRAM() ? "Yes" : "No");
+	printf("   Developer Id: %d\n", romHeader.GetDeveloperId());
+	printf("   Rom Version: %d\n", romHeader.GetRomVersion());
+	printf("   Checksum Complement: 0x%x\n", romHeader.GetChecksumComplement());
+	printf("   Checksum: 0x%x\n", romHeader.GetChecksum());
+	printf("   ROM Size: %d\n", romHeader.GetROMSize());
+	printf("   Num Banks: %d\n", romHeader.GetNumBanks());
+	printf("   Bank Size: %d\n", romHeader.GetBankSize());
+	printf("   SRAM Size: %d\n", romHeader.GetSRAMSize());
 	printf("=-=-=-=-=-\n");
 }
 
@@ -354,7 +373,7 @@ void SuperCopierSN::TestAddresses()
 	}
 }
 
-void SuperCopierSN::ReadHeader()
+void SuperCopierSN::ReadHeader(ROMHeader& romHeader, uint32_t romHeaderAddress)
 {
 	SetCartToIdleState();
 	WAIT();
@@ -363,14 +382,14 @@ void SuperCopierSN::ReadHeader()
 	mCartEnablePin.Disable();
 	WAIT();
 
-	for (uint32_t i = 0; i < LOROM_HEADER_BYTES; i++)
+	for (uint32_t i = 0; i < ROM_HEADER_SIZE_BYTES; i++)
 	{
 		// Disable the cartEnable (disable the rom/sram chips)
 		mCartEnablePin.Disable();
 		WAIT();
 
 		// Set the address to read a byte from
-		mAddressBus.SetAddress(i + ROM_HEADER_ADDRESS);
+		mAddressBus.SetAddress(i + romHeaderAddress);
 		WAIT();
 
 		// Set the dataBus to HiZ
@@ -384,7 +403,7 @@ void SuperCopierSN::ReadHeader()
 		// Grab the byte off the lines
 		uint8_t value = mDataBus.Read();
 		WAIT();
-		mROMHeader.mBuffer[i] = value;
+		romHeader.mBuffer[i] = value;
 		
 		mDataBus.HiZ();
 		WAIT();
@@ -408,17 +427,45 @@ void SuperCopierSN::Execute()
 	{
 	}
 
-	ReadHeader();
 
-	//todo: write a function to read the ROM header and detect the game. Then, give them the chance to change it.
-	// for now...
-	//const char gameName[] = "SUPERMARIOWORLD";
+	// try reading the header and checking it. If its no good, see if its HiRom
+	printf("CHECKING ROM HEADER\n");
+	printf("=-=-=-=-=-=-=-=-=-=\n");
+	printf("Testing for LoROM...\n");
+	ReadHeader(mROMHeader, LOROM_HEADER_ADDRESS);
+	if (!mROMHeader.IsValid())
+	{
+		mROMHeader.Reset();
+
+		printf("Game does not appear to be LoROM.\n");
+		printf("Testing for HiROM...\n");
+		ReadHeader(mROMHeader, HIROM_HEADER_ADDRESS);
+	}
+
+	// todo: allow re-inserting. for now, jsut abort.
+	//if (!mROMHeader.IsValid())
+	//{
+	//	printf("ERROR: Game cannot be read. Aborting...\n");
+	//	
+	//	// Configure lines for removing cartridge
+	//	SetCartToIdleState();
+	//	WAIT();
+
+	//	mResetPin.Enable();
+	//	WAIT();
+
+	//	printf("REMOVE CARTRIDGE and press any key.\n");
+	//	while (!getchar())
+	//	{
+	//	}
+
+	//	return;
+	//}
+	//
+
 	char gameName[22] = { 0 };
-	strncpy(gameName, (const char*)mROMHeader.mValues.mCartTitle, sizeof(gameName) - 1);
-	const uint32_t numBanks = 0x10; //smw
-	const uint32_t bankSize = 32768;//smw
-	const uint32_t sramSize = 2048;//smw
-		
+	mROMHeader.GetTitle(gameName, sizeof(gameName));
+
 	// Set Reset High so we send sram 5v and can read/write.
 	mResetPin.Disable();
 	WAIT();
@@ -429,7 +476,7 @@ void SuperCopierSN::Execute()
 		printf("\n");
 		printf("SuperCopier SN\n");
 		printf("=-=-=-=-=-=-=-\n");
-		PrintGameInfo(gameName, numBanks, bankSize, sramSize);
+		PrintGameInfo(mROMHeader);
 		printf("[D]ownload from SRAM\n");
 		printf("[U]pload to SRAM\n");
 		printf("Dump [R]OM\n");
@@ -456,19 +503,19 @@ void SuperCopierSN::Execute()
 		{
 			case 'd':
 			{
-				DownloadFromSRAM(gameName, sramSize);
+				DownloadFromSRAM(gameName, mROMHeader.GetSRAMSize());
 				break;
 			}
 			
 			case 'u':
 			{
-				UploadToSRAM(gameName, sramSize);
+				UploadToSRAM(gameName, mROMHeader.GetSRAMSize());
 				break;
 			}
 			
 			case 'r':
 			{
-				DumpROM(gameName, numBanks, bankSize);
+				DumpROM(gameName, mROMHeader.GetNumBanks(), mROMHeader.GetBankSize());
 				break;
 			}
 

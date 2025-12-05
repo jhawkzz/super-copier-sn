@@ -1,13 +1,13 @@
 #pragma once
 
 #include <cstdint>
+#include "addressBus.h"
+#include "dataBus.h"
 #include "snCartPins.h"
 #include "snRomHeader.h"
-#include "dataBus.h"
-#include "addressBus.h"
 
 #define SRAM_BUFFER_SIZE (1024 * 1024)
-#define ROM_BUFFER_SIZE (1024 * 1024 * 10)
+#define ROM_BUFFER_SIZE (1024 * 1024 * 16)
 
 class SuperCopierSN
 {
@@ -30,9 +30,9 @@ private:
 
 	void DumpROM(const char* pRomName, uint32_t numBanks, uint32_t bankSize);
 
-	void PrintGameInfo(const char* pRomName, uint32_t numBanks, uint32_t bankSize, uint32_t sramSize);
+	void PrintGameInfo(const ROMHeader& romHeader);
 
-	void ReadHeader();
+	void ReadHeader(ROMHeader& romHeader, uint32_t romHeaderAddress);
 
 	void TestAddresses();
 
@@ -47,5 +47,5 @@ private:
 
 	uint8_t mSRAMBuffer[SRAM_BUFFER_SIZE];
 	uint8_t mROMBuffer[ROM_BUFFER_SIZE];
-	LoROMHeader mROMHeader;
+	ROMHeader mROMHeader;
 };
