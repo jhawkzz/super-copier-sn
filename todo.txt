@@ -2,8 +2,4 @@
 	wiring WORKS. Dumped Super Mario SRAM, Push over ROM and Super Mario World ROM. All worked.
 	the issues i had were literally just loose wiring. pushing them down fixed it.
 
-Move Rom code into its own file
-
-use header data
-
-support hirom games
+12-5: Header reading works! Need to get a real PCB produced.
