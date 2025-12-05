@@ -292,21 +292,59 @@ void SuperCopierSN::PrintGameInfo(const ROMHeader& romHeader)
 	romHeader.GetMapMode(mapMode, sizeof(mapMode));
 	romHeader.GetCartType(cartType, sizeof(cartType));
 
+	if (!romHeader.IsValid())
+	{
+		printf("****ATTENTION: ROM APPEARS TO BE CORRUPT****\n");
+	}
+
 	printf("Game Info\n");
 	printf("=-=-=-=-=-\n");
-	printf("   Name: %s\n", title);
+	printf("   General\n");
+	printf("   -------------------\n");
+	printf("   Title: %s\n", title);
 	printf("   Region: %s\n", region);
+	if (!romHeader.HasExpandedHeader())
+	{
+		printf("   Developer ID: %d\n", romHeader.GetDeveloperId_NoExpandedHeader());
+	}
+	printf("   -------------------\n");
+	printf("\n");
+	printf("   Cart Features\n");
+	printf("   -------------\n");
 	printf("   Map Mode: %s\n", mapMode);
 	printf("   Cart Type: %s\n", cartType);
-	printf("   Has SRAM: %s\n", romHeader.HasSRAM() ? "Yes" : "No");
-	printf("   Developer Id: %d\n", romHeader.GetDeveloperId());
+	printf("   Has Battery: %s\n", romHeader.HasBattery() ? "Yes" : "No");
 	printf("   Rom Version: %d\n", romHeader.GetRomVersion());
-	printf("   Checksum Complement: 0x%x\n", romHeader.GetChecksumComplement());
-	printf("   Checksum: 0x%x\n", romHeader.GetChecksum());
+	printf("   -------------------\n");
+	printf("\n");
+	printf("   Chip Sizes\n");
+	printf("   -------------\n");
 	printf("   ROM Size: %d\n", romHeader.GetROMSize());
 	printf("   Num Banks: %d\n", romHeader.GetNumBanks());
 	printf("   Bank Size: %d\n", romHeader.GetBankSize());
-	printf("   SRAM Size: %d\n", romHeader.GetSRAMSize());
+	printf("   RAM Size: %d %s\n", romHeader.GetRAMSize(), romHeader.HasSuperFX() ? "(Super FX)" : "");
+	printf("   -------------\n");
+	printf("\n");
+	printf("   Checksum\n");
+	printf("   --------\n");
+	printf("   Checksum Complement: 0x%x\n", romHeader.GetChecksumComplement());
+	printf("   Checksum: 0x%x\n", romHeader.GetChecksum());
+	printf("   --------\n");
+	if (romHeader.HasExpandedHeader())
+	{
+		printf("\n");
+		char gameCode[22] = { 0 };
+		romHeader.GetGameCode_ExpandedHeader(gameCode, sizeof(gameCode));
+
+		printf("   Expanded Header Features\n");
+		printf("   ------------------------\n");
+		printf("   Game Code: %s\n", gameCode);
+		printf("   Cart SubVersion: %d\n", romHeader.GetCartSubVersion_ExpandedHeader());
+		printf("   Special Version: %d\n", romHeader.GetSpecialVersion_ExpandedHeader());
+		printf("   Expansion RAM Size: %d\n", romHeader.GetExpansionRAMSize_ExpandedHeader());
+		printf("   Maker Code (Developer): 0x%x\n", romHeader.GetMakerCode_ExpandedHeader());
+		printf("   ------------------------\n");
+	}
 	printf("=-=-=-=-=-\n");
 }
 
@@ -503,13 +541,13 @@ void SuperCopierSN::Execute()
 		{
 			case 'd':
 			{
-				DownloadFromSRAM(gameName, mROMHeader.GetSRAMSize());
+				DownloadFromSRAM(gameName, mROMHeader.GetRAMSize());
 				break;
 			}
 			
 			case 'u':
 			{
-				UploadToSRAM(gameName, mROMHeader.GetSRAMSize());
+				UploadToSRAM(gameName, mROMHeader.GetRAMSize());
 				break;
 			}
 			
