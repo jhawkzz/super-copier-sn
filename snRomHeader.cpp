@@ -84,25 +84,25 @@ bool ROMHeader::IsValid() const
     }
 
     // Check ROM
-    if (   mValues.mROMSize != ROM_SIZE_512KB
-        && mValues.mROMSize != ROM_SIZE_1MB
-        && mValues.mROMSize != ROM_SIZE_2MB
-        && mValues.mROMSize != ROM_SIZE_4MB
-        && mValues.mROMSize != ROM_SIZE_8MB)
+    if (   mValues.mROMSizeMBit != ROM_SIZE_3MBit_4MBit
+        && mValues.mROMSizeMBit != ROM_SIZE_5MBit_8MBit
+        && mValues.mROMSizeMBit != ROM_SIZE_9MBit_16MBit
+        && mValues.mROMSizeMBit != ROM_SIZE_17MBit_32MBit
+        && mValues.mROMSizeMBit != ROM_SIZE_33MBit_64MBit)
     {
-        printf("ROM Check Failed: Found Value: 0x%x\n", mValues.mROMSize);
+        printf("ROM Check Failed: Found Value: 0x%x\n", mValues.mROMSizeMBit);
         return false;
     }
 
     // Check RAM
-    if (   mValues.mRAMSize != RAM_SIZE_NONE
-        && mValues.mRAMSize != RAM_SIZE_16KB
-        && mValues.mRAMSize != RAM_SIZE_64KB
-        && mValues.mRAMSize != RAM_SIZE_256KB
-        && mValues.mRAMSize != RAM_SIZE_512KB
-        && mValues.mRAMSize != RAM_SIZE_1MB)
+    if (   mValues.mRAMSizeKBit != RAM_SIZE_NONE
+        && mValues.mRAMSizeKBit != RAM_SIZE_16KBit
+        && mValues.mRAMSizeKBit != RAM_SIZE_64KBit
+        && mValues.mRAMSizeKBit != RAM_SIZE_256KBit
+        && mValues.mRAMSizeKBit != RAM_SIZE_512KBit
+        && mValues.mRAMSizeKBit != RAM_SIZE_1MBit)
     {
-        printf("RAM Check Failed: Found Value: 0x%x\n", mValues.mRAMSize);
+        printf("RAM Check Failed: Found Value: 0x%x\n", mValues.mRAMSizeKBit);
         return false;
     }
 
@@ -169,18 +169,19 @@ bool ROMHeader::HasBattery() const
     return false;
 }
 
-uint32_t ROMHeader::GetROMSize() const
+uint32_t ROMHeader::GetROMSizeBytes() const
 {
-    // In practice, we could do 2^ROMSize. However, we're reporting the chip size,
-    // not the actual amount of ROM _used_.
-    switch (mValues.mROMSize)
+    // See https://sneslab.net/wiki/SNES_ROM_Header says we could do 2^ROMSize,
+    // which is does WORK, but is not correct. The SNES docs say this is a lookup table,
+    // and not an algorithm.
+    switch (mValues.mROMSizeMBit)
     {
-        case ROM_SIZE_512KB: return 512 * 1024;
-        case ROM_SIZE_1MB:   return 1 * 1024 * 1024;
-        case ROM_SIZE_2MB:   return 2 * 1024 * 1024;
-        case ROM_SIZE_4MB:   return 4 * 1024 * 1024;
-        case ROM_SIZE_8MB:   return 8 * 1024 * 1024;
-        default:             break;
+        case ROM_SIZE_3MBit_4MBit:   return 512 * 1024; //4Mbits == 512 KBytes
+        case ROM_SIZE_5MBit_8MBit:   return 1024 * 1024; //8MBits == 1 MByte
+        case ROM_SIZE_9MBit_16MBit:  return 2 * 1024 * 1024; //16MBits == 2 MBytes
+        case ROM_SIZE_17MBit_32MBit: return 4 * 1024 * 1024; //32MBits == 4 MBytes
+        case ROM_SIZE_33MBit_64MBit: return 8 * 1024 * 1024; //64MBits == 8 MBytes
+        default:                     break;
     }
 
     return 0;
@@ -202,26 +203,27 @@ bool ROMHeader::HasSuperFX() const
     return false;
 }
 
-uint32_t ROMHeader::GetRAMSize() const
+uint32_t ROMHeader::GetRAMSizeBytes() const
 {
     // For SuperFX games, its stored in the ExpansionRAM spot.
     if (HasSuperFX())
     {
-        return GetExpansionRAMSize_ExpandedHeader();
+        return GetExpansionRAMSizeBytes_ExpandedHeader();
     }
     else
     {
-        // In practice, we could do 2^RamSize. However, we're reporting the chip size,
-        // not the actual amount of Ram _used_.
-        switch (mValues.mRAMSize)
+        // See https://sneslab.net/wiki/SNES_ROM_Header says we could do 2^RAMSize,
+        // which is does WORK, but is not correct. The SNES docs say this is a lookup table,
+        // and not an algorithm.
+        switch (mValues.mRAMSizeKBit)
         {
-            case RAM_SIZE_NONE:  return 0;
-            case RAM_SIZE_16KB:  return 16 * 1024;
-            case RAM_SIZE_64KB:  return 64 * 1024;
-            case RAM_SIZE_256KB: return 256 * 1024;
-            case RAM_SIZE_512KB: return 512 * 1024;
-            case RAM_SIZE_1MB:   return 1024 * 1024;
-            default:             break;
+            case RAM_SIZE_NONE:    return 0;
+            case RAM_SIZE_16KBit:  return 2 * 1024; //16 KBits == 2 KBytes
+            case RAM_SIZE_64KBit:  return 8 * 1024; //64 KBits == 8 KBytes
+            case RAM_SIZE_256KBit: return 32 * 1024; //256 KBits == 32 KBytes
+            case RAM_SIZE_512KBit: return 64 * 1024; //512 KBits == 64 KBytes
+            case RAM_SIZE_1MBit:   return 128 * 1024; //1Megabit == 128 KBytes
+            default:               break;
         }
     }
 
@@ -230,10 +232,10 @@ uint32_t ROMHeader::GetRAMSize() const
 
 uint32_t ROMHeader::GetNumBanks() const
 {
-    return GetROMSize() / GetBankSize();
+    return GetROMSizeBytes() / GetBankSizeBytes();
 }
 
-uint32_t ROMHeader::GetBankSize() const
+uint32_t ROMHeader::GetBankSizeBytes() const
 {
     if (IsLoROM())
     {
@@ -356,18 +358,19 @@ uint16_t ROMHeader::GetMakerCode_ExpandedHeader() const
     return mValues.mMakerCode;
 }
 
-uint32_t ROMHeader::GetExpansionRAMSize_ExpandedHeader() const
+uint32_t ROMHeader::GetExpansionRAMSizeBytes_ExpandedHeader() const
 {
-    // In practice, we could do 2^mExpansionRAMSize. However, we're reporting the chip size,
-    // not the actual amount of mExpansionRAMSize _used_.
-    switch (mValues.mExpansionRAMSize)
+    // See https://sneslab.net/wiki/SNES_ROM_Header says we could do 2^RAMSize,
+    // which is does WORK, but is not correct. The SNES docs say this is a lookup table,
+    // and not an algorithm.
+    switch (mValues.mExpansionRAMSizeKBit)
     {
-        case EXPANSION_RAM_SIZE_NONE:  return 0;
-        case EXPANSION_RAM_SIZE_16KB:  return 16 * 1024;
-        case EXPANSION_RAM_SIZE_64KB:  return 64 * 1024;
-        case EXPANSION_RAM_SIZE_256KB: return 256 * 1024;
-        case EXPANSION_RAM_SIZE_512KB: return 512 * 1024;
-        case EXPANSION_RAM_SIZE_1MB:   return 1024 * 1024;
+        case EXPANSION_RAM_SIZE_NONE:    return 0;
+        case EXPANSION_RAM_SIZE_16KBit:  return 2 * 1024; //16 KBits == 2 KBytes
+        case EXPANSION_RAM_SIZE_64KBit:  return 8 * 1024; //64 KBits == 8 KBytes
+        case EXPANSION_RAM_SIZE_256KBit: return 32 * 1024; //256 KBits == 32 KBytes
+        case EXPANSION_RAM_SIZE_512KBit: return 64 * 1024; //512 KBits == 64 KBytes
+        case EXPANSION_RAM_SIZE_1MBit:   return 128 * 1024; //1Megabit == 128 KBytes
         default: break;
     }
 

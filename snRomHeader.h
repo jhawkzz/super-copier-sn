@@ -14,14 +14,6 @@
 #define LOROM_BANK_SIZE (32768)
 #define HIROM_BANK_SIZE (65536)
 
-// Note, 32kb and 128kb are not supported.
-#define EXPANSION_RAM_SIZE_NONE  (0x0)
-#define EXPANSION_RAM_SIZE_16KB  (0x1)
-#define EXPANSION_RAM_SIZE_64KB  (0x3)
-#define EXPANSION_RAM_SIZE_256KB (0x5)
-#define EXPANSION_RAM_SIZE_512KB (0x6)
-#define EXPANSION_RAM_SIZE_1MB   (0x7)
-
 #define MAP_MODE_LOROM_2_68_MHZ	    (0x20) //smw
 #define MAP_MODE_HIROM_2_68_MHZ	    (0x21)
 #define MAP_MODE_SA_1               (0x23)
@@ -58,19 +50,27 @@
 #define CART_TYPE_CUSTOM_ROM_RAM_BATTERY  (0xF5)
 #define CART_TYPE_CUSTOM_ROM_BATTERY      (0xF6)
 
-#define ROM_SIZE_512KB (0x9)
-#define ROM_SIZE_1MB   (0xA)
-#define ROM_SIZE_2MB   (0xB)
-#define ROM_SIZE_4MB   (0xC)
-#define ROM_SIZE_8MB   (0xD)
+#define ROM_SIZE_3MBit_4MBit   (0x9)
+#define ROM_SIZE_5MBit_8MBit   (0xA)
+#define ROM_SIZE_9MBit_16MBit  (0xB)
+#define ROM_SIZE_17MBit_32MBit (0xC)
+#define ROM_SIZE_33MBit_64MBit (0xD)
 
-// Note, 32kb and 128kb are not supported.
-#define RAM_SIZE_NONE  (0x0)
-#define RAM_SIZE_16KB  (0x1)
-#define RAM_SIZE_64KB  (0x3)
-#define RAM_SIZE_256KB (0x5)
-#define RAM_SIZE_512KB (0x6)
-#define RAM_SIZE_1MB   (0x7)
+// Note, 32kbit and 128kbit are not supported.
+#define RAM_SIZE_NONE    (0x0)
+#define RAM_SIZE_16KBit  (0x1)
+#define RAM_SIZE_64KBit  (0x3)
+#define RAM_SIZE_256KBit (0x5)
+#define RAM_SIZE_512KBit (0x6)
+#define RAM_SIZE_1MBit   (0x7)
+
+// Note, 32kbit and 128kbit are not supported.
+#define EXPANSION_RAM_SIZE_NONE    (0x0)
+#define EXPANSION_RAM_SIZE_16KBit  (0x1)
+#define EXPANSION_RAM_SIZE_64KBit  (0x3)
+#define EXPANSION_RAM_SIZE_256KBit (0x5)
+#define EXPANSION_RAM_SIZE_512KBit (0x6)
+#define EXPANSION_RAM_SIZE_1MBit   (0x7)
 
 #define REGION_CODE_JAPAN       (0x0)
 #define REGION_CODE_USA_CAN     (0x1)
@@ -100,10 +100,10 @@ struct ROMHeader
     bool IsLoROM() const;
     bool HasBattery() const;
     bool HasSuperFX() const;
-    uint32_t GetROMSize() const;
-    uint32_t GetRAMSize() const;
+    uint32_t GetROMSizeBytes() const;
+    uint32_t GetRAMSizeBytes() const;
     uint32_t GetNumBanks() const;
-    uint32_t GetBankSize() const;
+    uint32_t GetBankSizeBytes() const;
     void GetRegion(char* pRegion, uint32_t size) const;
     void GetTitle(char* pTitle, uint32_t size) const;
     void GetMapMode(char* pMapMode, uint32_t size) const;
@@ -115,7 +115,7 @@ struct ROMHeader
     bool HasExpandedHeader() const;
     uint16_t GetMakerCode_ExpandedHeader() const;
     void GetGameCode_ExpandedHeader(char* pGameCode, uint32_t size) const;
-    uint32_t GetExpansionRAMSize_ExpandedHeader() const;
+    uint32_t GetExpansionRAMSizeBytes_ExpandedHeader() const;
     uint8_t GetSpecialVersion_ExpandedHeader() const;
     uint8_t GetCartSubVersion_ExpandedHeader() const;
 
@@ -124,28 +124,28 @@ struct ROMHeader
     {
         /* Start Expansion Header (not used in all games) */
         uint16_t mMakerCode = 0;
-        uint8_t mGameCode[5] = { 0 };
-        uint8_t mFixedValue[6] = { 0 };
-        uint8_t mExpansionRAMSize = 0;
-        uint8_t mSpecialVersion = 0;
-        uint8_t mCartSubVersion = 0;
+        uint8_t  mGameCode[5] = { 0 };
+        uint8_t  mFixedValue[6] = { 0 };
+        uint8_t  mExpansionRAMSizeKBit = 0;
+        uint8_t  mSpecialVersion = 0;
+        uint8_t  mCartSubVersion = 0;
         /* End Expansion Header */
 
-        uint8_t mCartTitle[21] = { 0 };
-        uint8_t mMapMode = 0;
-        uint8_t mCartType = 0;
-        uint8_t mROMSize = 0;
-        uint8_t mRAMSize = 0;
-        uint8_t mCountryCode = 0;
-        uint8_t mDeveloperID_Or_ExpandedHeaderFlag = 0; //if 0x33 it means we support the expanded header.
-        uint8_t mROMVersion = 0;
+        uint8_t  mCartTitle[21] = { 0 };
+        uint8_t  mMapMode = 0;
+        uint8_t  mCartType = 0;
+        uint8_t  mROMSizeMBit = 0;
+        uint8_t  mRAMSizeKBit = 0;
+        uint8_t  mCountryCode = 0;
+        uint8_t  mDeveloperID_Or_ExpandedHeaderFlag = 0; //if 0x33 it means we support the expanded header.
+        uint8_t  mROMVersion = 0;
         uint16_t mChecksumComplement = 0;
         uint16_t mChecksum = 0;
     };
 
     union
     {
-        Values mValues;
+        Values  mValues;
         uint8_t mBuffer[sizeof(Values)] = { 0 };
     };
 };

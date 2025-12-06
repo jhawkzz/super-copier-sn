@@ -319,10 +319,10 @@ void SuperCopierSN::PrintGameInfo(const ROMHeader& romHeader)
     printf("\n");
     printf("   Chip Sizes\n");
     printf("   -------------\n");
-    printf("   ROM Size: %d\n", romHeader.GetROMSize());
+    printf("   ROM Size: %d bytes\n", romHeader.GetROMSizeBytes());
     printf("   Num Banks: %d\n", romHeader.GetNumBanks());
-    printf("   Bank Size: %d\n", romHeader.GetBankSize());
-    printf("   RAM Size: %d %s\n", romHeader.GetRAMSize(), romHeader.HasSuperFX() ? "(Super FX)" : "");
+    printf("   Bank Size: %d bytes\n", romHeader.GetBankSizeBytes());
+    printf("   RAM Size: %d bytes %s\n", romHeader.GetRAMSizeBytes(), romHeader.HasSuperFX() ? "(Super FX)" : "");
     printf("   -------------\n");
     printf("\n");
     printf("   Checksum\n");
@@ -341,7 +341,7 @@ void SuperCopierSN::PrintGameInfo(const ROMHeader& romHeader)
         printf("   Game Code: %s\n", gameCode);
         printf("   Cart SubVersion: %d\n", romHeader.GetCartSubVersion_ExpandedHeader());
         printf("   Special Version: %d\n", romHeader.GetSpecialVersion_ExpandedHeader());
-        printf("   Expansion RAM Size: %d\n", romHeader.GetExpansionRAMSize_ExpandedHeader());
+        printf("   Expansion RAM Size: %d bytes\n", romHeader.GetExpansionRAMSizeBytes_ExpandedHeader());
         printf("   Maker Code (Developer): 0x%x\n", romHeader.GetMakerCode_ExpandedHeader());
         printf("   ------------------------\n");
     }
@@ -541,19 +541,19 @@ void SuperCopierSN::Execute()
         {
             case 'd':
             {
-                DownloadFromSRAM(gameName, mROMHeader.GetRAMSize());
+                DownloadFromSRAM(gameName, mROMHeader.GetRAMSizeBytes());
                 break;
             }
             
             case 'u':
             {
-                UploadToSRAM(gameName, mROMHeader.GetRAMSize());
+                UploadToSRAM(gameName, mROMHeader.GetRAMSizeBytes());
                 break;
             }
             
             case 'r':
             {
-                DumpROM(gameName, mROMHeader.GetNumBanks(), mROMHeader.GetBankSize());
+                DumpROM(gameName, mROMHeader.GetNumBanks(), mROMHeader.GetBankSizeBytes());
                 break;
             }
 
