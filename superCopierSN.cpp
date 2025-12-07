@@ -192,7 +192,68 @@ void SuperCopierSN::DownloadFromSRAM(const char* pRomName, uint32_t sramSize)
     pFile = NULL;
 }
 
-void SuperCopierSN::DumpROM(const char *pRomName, uint32_t numBanks, uint32_t bankSize)
+void SuperCopierSN::DumpLoROM(const char *pRomName, uint32_t numBanks)
+{
+    char romFileName[300] = { 0 };
+    snprintf(romFileName, sizeof(romFileName) - 1, "./%s.%s", pRomName, ROM_EXTENSION);
+
+    FILE* pFile = fopen(romFileName, "wb");
+    if (!pFile)
+    {
+        printf("Failed to open file '%s' for write!\n", romFileName);
+        return;
+    }
+
+    memset(mROMBuffer, 0, sizeof(mROMBuffer));
+        
+    SetCartToIdleState();
+    WAIT();
+
+    uint32_t bufferWriteIndex = 0;
+
+    // LoROM (Memory Map 20/23) games are in banks $00 thru $7D
+    for (uint32_t c = LOROM_ROM_START_BANK; c < LOROM_ROM_START_BANK + numBanks; c++)
+    {
+        printf("Dumping Bank: $%x\n", c);
+
+        for (uint32_t i = 0; i < LOROM_BANK_SIZE; i++)
+        {
+            uint32_t address = (c << 16) | (i + LOROM_ROM_BANK_BASE_ADDRESS);
+
+            // Disable the cartEnable (disable the rom/sram chips)
+            mCartEnablePin.Disable();
+            
+            // Set the address to read a byte from
+            mAddressBus.SetAddress(address);
+            
+            // Set the dataBus to HiZ
+            mDataBus.HiZ();
+            
+            // Now we're read, so enable the cartEnable
+            mCartEnablePin.Enable();
+            WAIT();
+
+            // Grab the byte off the lines
+            uint8_t value = mDataBus.Read();
+            
+            mROMBuffer[bufferWriteIndex] = value;
+            bufferWriteIndex++;
+
+            mDataBus.HiZ();
+        }
+    }
+
+    SetCartToIdleState();
+    WAIT();
+
+    printf("DumpROM: Wrote contents to file '%s'\n", romFileName);
+    fwrite(mROMBuffer, numBanks * LOROM_BANK_SIZE, 1, pFile);
+
+    fclose(pFile);
+    pFile = NULL;
+}
+
+void SuperCopierSN::DumpHiROM(const char* pRomName, uint32_t numBanks)
 {
     char romFileName[300] = { 0 };
     snprintf(romFileName, sizeof(romFileName) - 1, "./%s.%s", pRomName, ROM_EXTENSION);
@@ -206,32 +267,28 @@ void SuperCopierSN::DumpROM(const char *pRomName, uint32_t numBanks, uint32_t ba
 
     memset(mROMBuffer, 0, sizeof(mROMBuffer));
 
-    //todo: need to deal with hiRom, and things like bank skipping (sram games dont have rom data at banks 0x700000-0x7DFFFF)
-    //todo: handle things like roms that don't have even bank usage (we gotta add the two banks and round up to nearest pow2...or something)
-    //todo: might be better to stream out the data to disk, but eh
-
     SetCartToIdleState();
     WAIT();
 
-    for (uint32_t c = 0; c < numBanks; c++)
+    uint32_t bufferWriteIndex = 0;
+
+    // HiROM (Memory Map 21) games are in banks $C0 thru $FF
+    for (uint32_t c = HIROM_ROM_START_BANK; c < HIROM_ROM_START_BANK + numBanks; c++)
     {
         printf("Dumping Bank: $%x\n", c);
 
-        for (uint32_t i = 0; i < bankSize; i++)
+        for (uint32_t i = 0; i < HIROM_BANK_SIZE; i++)
         {
-            uint32_t address = (c << 16) | i;
+            uint32_t address = (c << 16) | (i + HIROM_ROM_BANK_BASE_ADDRESS);
 
             // Disable the cartEnable (disable the rom/sram chips)
             mCartEnablePin.Disable();
-            WAIT();
 
             // Set the address to read a byte from
             mAddressBus.SetAddress(address);
-            WAIT();
 
             // Set the dataBus to HiZ
             mDataBus.HiZ();
-            WAIT();
 
             // Now we're read, so enable the cartEnable
             mCartEnablePin.Enable();
@@ -239,12 +296,11 @@ void SuperCopierSN::DumpROM(const char *pRomName, uint32_t numBanks, uint32_t ba
 
             // Grab the byte off the lines
             uint8_t value = mDataBus.Read();
-            WAIT();
-            mROMBuffer[(c * bankSize) + i] = value;
-            //printf("%x: %x\n", address, value);
+
+            mROMBuffer[bufferWriteIndex] = value;
+            bufferWriteIndex++;
 
             mDataBus.HiZ();
-            WAIT();
         }
     }
 
@@ -252,10 +308,10 @@ void SuperCopierSN::DumpROM(const char *pRomName, uint32_t numBanks, uint32_t ba
     WAIT();
 
     printf("DumpROM: Wrote contents to file '%s'\n", romFileName);
-    fwrite(mROMBuffer, numBanks * bankSize, 1, pFile);
+    fwrite(mROMBuffer, numBanks * HIROM_BANK_SIZE, 1, pFile);
 
     fclose(pFile);
-    pFile = NULL;	
+    pFile = NULL;
 }
 
 void SuperCopierSN::SetCartToIdleState()
@@ -413,6 +469,8 @@ void SuperCopierSN::TestAddresses()
 
 void SuperCopierSN::ReadHeader(ROMHeader& romHeader, uint32_t romHeaderAddress)
 {
+    romHeader.Reset();
+
     SetCartToIdleState();
     WAIT();
 
@@ -450,6 +508,12 @@ void SuperCopierSN::ReadHeader(ROMHeader& romHeader, uint32_t romHeaderAddress)
 
 void SuperCopierSN::Execute()
 {
+    // Holy crap!! 12-7: After fixing wiring last night and cleaning up my LoRom vs HiRom dumping,
+    // i have had 5 clean dumps in a row. 2 SMW, 1 Zombies, 1 Ken Griffey, and DONKEY KONG COUNTRY.
+    // DKC is significant because its HiROM, but here's the greatest part! It didnt binary compare
+    // with my known copy, but the checksum was ok. Turns out i have Rev 1 and the cleanRom is rev 0!!!
+
+
     // Setup for a game to be inserted.
     SetCartToIdleState();
     WAIT();
@@ -465,19 +529,17 @@ void SuperCopierSN::Execute()
     {
     }
 
+    // Set Reset High so we send sram 5v and can read/write.
+    mResetPin.Disable();
+    WAIT();
 
     // try reading the header and checking it. If its no good, see if its HiRom
     printf("CHECKING ROM HEADER\n");
     printf("=-=-=-=-=-=-=-=-=-=\n");
-    printf("Testing for LoROM...\n");
-    ReadHeader(mROMHeader, LOROM_HEADER_ADDRESS);
+    ReadHeader(mROMHeader, HEADER_ADDRESS_MAPMODE_20_21_23);
     if (!mROMHeader.IsValid())
     {
-        mROMHeader.Reset();
-
-        printf("Game does not appear to be LoROM.\n");
-        printf("Testing for HiROM...\n");
-        ReadHeader(mROMHeader, HIROM_HEADER_ADDRESS);
+        ReadHeader(mROMHeader, HEADER_ADDRESS_MAPMODE_25);
     }
 
     // todo: allow re-inserting. for now, jsut abort.
@@ -504,10 +566,6 @@ void SuperCopierSN::Execute()
     char gameName[22] = { 0 };
     mROMHeader.GetTitle(gameName, sizeof(gameName));
 
-    // Set Reset High so we send sram 5v and can read/write.
-    mResetPin.Disable();
-    WAIT();
-
     bool shouldExit = false;	
     while(!shouldExit)
     {
@@ -518,6 +576,8 @@ void SuperCopierSN::Execute()
         printf("[D]ownload from SRAM\n");
         printf("[U]pload to SRAM\n");
         printf("Dump [R]OM\n");
+        printf("Force [L]oROM Dump Bank 1\n");
+        printf("Force [H]iROM Dump Bank 1\n");
         printf("[T]est Addresses\n");
         printf("E[x]it\n");
         printf("=-=-=-=-=-=-=-\n");
@@ -553,7 +613,30 @@ void SuperCopierSN::Execute()
             
             case 'r':
             {
-                DumpROM(gameName, mROMHeader.GetNumBanks(), mROMHeader.GetBankSizeBytes());
+                if (mROMHeader.IsLoROM())
+                {
+                    DumpLoROM(gameName, mROMHeader.GetNumBanks());
+                }
+                else if (mROMHeader.IsHiROM())
+                {
+                    DumpHiROM(gameName, mROMHeader.GetNumBanks());
+                }
+                else
+                {
+                    printf("Unsupported mapping mode! Can't dump (yet)\n");
+                }
+                break;
+            }
+
+            case 'l':
+            {
+                //DumpROM("ForcedDumpLo.smc", 1, LOROM_BANK_SIZE);
+                break;
+            }
+
+            case 'h':
+            {
+                //DumpROM("ForcedDumpHi.smc", 1, HIROM_BANK_SIZE);
                 break;
             }
 

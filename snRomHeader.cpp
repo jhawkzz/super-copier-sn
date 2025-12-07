@@ -139,6 +139,16 @@ bool ROMHeader::IsLoROM() const
     return false;
 }
 
+bool ROMHeader::IsHiROM() const
+{
+    if (mValues.mMapMode == MAP_MODE_HIROM_2_68_MHZ || mValues.mMapMode == MAP_MODE_HIROM_3_58_MHZ)
+    {
+        return true;
+    }
+
+    return false;
+}
+
 bool ROMHeader::HasBattery() const
 {
     switch (mValues.mCartType)

@@ -28,7 +28,8 @@ private:
 	void UploadToSRAM(const char* pRomName, uint32_t sramSize);
 	void DownloadFromSRAM(const char* pRomName, uint32_t sramSize);
 
-	void DumpROM(const char* pRomName, uint32_t numBanks, uint32_t bankSize);
+	void DumpLoROM(const char* pRomName, uint32_t numBanks);
+	void DumpHiROM(const char* pRomName, uint32_t numBanks);
 
 	void PrintGameInfo(const ROMHeader& romHeader);
 

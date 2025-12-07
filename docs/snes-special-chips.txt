@@ -1,0 +1,271 @@
+DSP1
+====
+Aim for the Ace Tennis (J)
+Armored Trooper Votoms (J)
+Ballz 3D (J)
+Ballz 3D (US)
+Battle Racers (J)
+Drift King Shuto Kou Battle 2 (J)
+Final Stretch (J)
+Hashiriya - Rider's Spirit (J)
+Korean League (K)
+Lock-On (US)
+Michael Andretti's Indy Car Challenge (J)
+Michael Andretti's Indy Car Challenge (US)
+Pilot Wings (E) (DSP1 LoRom)
+Pilot Wings (J) (DSP1 LoRom)
+Pilot Wings (US) (DSP1 LoRom)
+Super Air Diver (J)
+Super Air Diver (E) (No Good Dump Known)
+Super Air Diver 2 (J)
+Super 3D Baseball (J)
+Syutoko Battle Racing 94' (J)
+Syutoko Battle Racing 2 (J)
+Super Bases Loaded 2 (US) (DSP1 A LoRom)
+Super F1 Circus Gaiden (J) (22655)
+Super F1 Circus Gaiden (J) (21859)
+Super Mario Kart (J)
+Super Mario Kart (E)
+Super Mario Kart (US)
+Suzuka 8 Hours (J)
+Suzuka 8 Hours (US)
+These games have special chips for enhanced features on the SNES. Only the
+DSP1 games will run on a copier if a DSP cartridge or adapter is installed.
+Game Genie works, but can not be appended to a ROM for game enhancing features.
+Some games will run if the original of the same game is plugged into the SNES
+copier while running the program from RAM. These are: Megaman X2, Megaman X3,
+and Super Bases Loaded 2.
+
+Game Genie
+==========
+Game Genie (US)
+
+SA-1
+====
+Augusta Masters 3 New World Golf (J)
+Bass Fishing No.1 (US)
+Derby Jockey 2 (J)
+Idaten (J)
+Igo Daidou (J)
+J-League '96 Dream Stadium (J)
+Jumpin' Derby (J)
+Kakinoki Shogi (J)
+Kato Hifumi9dan Shogi (J)
+Kirby 3 (J)
+Kirby Super Deluxe (J)
+Kirby Super Star (US)
+Kirby's Dream Land 3 (US)
+Kishi no Hanamichi (J)
+Marvelous (J)
+Masoukishin - Super Robot Wars Gaiden - Lord of Elemental (J)
+Mini Yonku Shining Scorpion Let's & Go!! (J)
+Parodius 3 - Jikkyou Oshaberi Parodius (J)
+Pebble Beach New Tournament Edition (J)
+PGA European Tour (US)
+PGA Tour 96 (E)
+PGA Tour 96 (US)
+Saban's Power Rangers Zeo Battle Racers (US)
+SD F1 Grand Prix (J)
+SD Gundam GNext (J)
+Shogi Saikyou 2 (J)
+Super Mario RPG (US)
+Super Mario RPG (J)
+Super Shogi 3 (J)
+War in Europe Expert WW II (J)
+
+SA-1 (ID=52)
+====================
+Dragon Ball Z - Hyper Dimension (J)
+Igo Taisyou (J)
+New Shogi Club (J)
+Shogi Mahjing (J)
+Super Bomberman Panic Bomber World (J)
+
+PLGS (SPC7110 - ROM types 0xF5 & 0xF9)
+======================================
+Dai Kaijyu Monogatari 2 (J)
+Far East of Eden Zero (J)
+Large Shell Beast Story 2
+Super Power League 4
+
+FX GSU-1 (FX-Argonaut)
+======================
+Dirt Racer (E)
+Dirt Trax FX (E)
+Dirt Trax FX (US)
+Doom (J)
+Doom (US)
+Vortex (E)
+Vortex (J)
+Vortex (US)
+
+Seta ST010 (SETA DSP1)
+======================
+2 Dan Morita Shougi (J)
+Exhaust Heat 2 (J)
+F1 Roc 2 - Race of Champions (US)
+
+CX4
+===
+Mega Man X2 (E)
+Mega Man X2 (US)
+Mega Man X3 (US)
+Rockman X2 (J)
+Rockman X3 (J)
+
+O B C 1 (OBC1)
+==============
+Metal Combat (US)
+
+Mario Chip 1 (FX-V1)
+====================
+Star Fox Competition - Weekend Edition (US)
+Star Fox 2 (Beta)
+Star Fox (US)
+Star Fox (J)
+Star Wing (E)
+Star Wing (G)
+
+FX GSU-2 (FX-V2)
+================
+Stunt Race FX (E)
+Stunt Race FX (US)
+Wild Trax (J)
+Winter Gold FX (E)
+Yoshi's Island (E)
+Yoshi's Island (J)
+Yoshi's Island (US)
+
+S-DD1
+=====
+Star Ocean (J)
+Street Fighter 2 Alpha (US)
+Street Fighter 2 Alpha (E)
+Street Fighter Zero 2 (J)
+
+GAMEBOY
+=======
+Super Gameboy (J) (V1.0)
+Super Gameboy (J) (V1.1)
+Super Gameboy (J) (V1.2)
+Super Gameboy 2 (J) (V1.16)
+
+Unknown ID=245
+==============
+Nidan Morita Shogi 2 (J)
+
+FX-KSS
+======
+Pachisuro Palusupe (Pachislo Story) (J)
+
+BS-X
+====
+Satellaview BS-X (O.S.rom)
+
+DSP1
+====
+Aim for the Ace Tennis (J)
+Armored Trooper Votoms (J)
+Ballz 3D (J)
+Ballz 3D (US)
+Battle Racers (J)
+Drift King Shuto Kou Battle 2 (J)
+Final Stretch (J)
+Hashiriya - Rider's Spirit (J)
+Korean League (K)
+Lock-On (US)
+Michael Andretti's Indy Car Challenge (J)
+Michael Andretti's Indy Car Challenge (US)
+Pilot Wings (E) (DSP1 LoRom)
+Pilot Wings (J) (DSP1 LoRom)
+Pilot Wings (US) (DSP1 LoRom)
+Super Air Diver (J)
+Super Air Diver (E) (No Good Dump Known)
+Super Air Diver 2 (J)
+Super 3D Baseball (J)
+Syutoko Battle Racing 94' (J)
+Syutoko Battle Racing 2 (J)
+Super Bases Loaded 2 (US) (DSP1 A LoRom)
+Super F1 Circus Gaiden (J) (22655)
+Super F1 Circus Gaiden (J) (21859)
+Super Mario Kart (J)
+Super Mario Kart (E)
+Super Mario Kart (US)
+Suzuka 8 Hours (J)
+Suzuka 8 Hours (US)
+
+DSP2
+====
+Dungeon Master (J)
+Dungeon Master (E)
+Dungeon Master (US)
+
+DSP3
+====
+Gundam GX (J)
+
+DSP4
+====
+Planets Champ Top Gear 3000 (J)
+Top Gear 3000 (E)
+Top Gear 3000 (US)
+
+Addendum:
+
+BS-X SatellaView
+================
+The Satellaview consists of two units.. the base unit which connected to the IO port on the
+bottom of the SNES and the BS-X cart which went in the top of the SNES.
+
+The Satellaview system connected to St. Giga, the Satellite provider. The unit would connect and
+make new content available for download.
+
+Games on the system were often exclusive to the Satellaview, and can't be found anywhere else.
+They were also available for only imited periods of time.
+
+Games could be saved to a RAM cart (BS-X adapter).
+
+The base unit had a 512 Kbit memory (RAM) chip to boost the SNES's capabilities and 1 Megabit ROM
+chip that contained the operating system needed to control the Satellaview. It also had a 256
+Kbit flash memory if the user hadn't bought him/herself an BS-X Special Broadcast Cassette that
+contained a 1 Megabit flash memory chip.
+
+The BS-X cartridge resembles a Super Game Boy. It plugs into the cart slot as normal. Inside, it
+has 8 MBits of ROM that holds the operating system and the interface software. It also holds and
+extra 4 MBits of RAM. The little plug-in cart is actually a unique 'Flash ROM' cart that holds
+game code without the use of Battery-Backed RAM. Unlike ROM, it can be wiped and overwritten by
+special methods.
+
+Super FX
+========
+The Super FX is a 10/21MHz RISC CPU developed by Argonaut Software used as a game enhancer by
+several game tiles. Released SNES Super FX games included Yoshi's Island (best single-player
+game on SNES, if you like platform games), Doom, Winter Gold, Dirt Trax FX, StarFox, Stunt Race
+FX and Vortex. If you're lucky, you might find a copy of the unreleased Starfox 2 image floating
+around, but its sound code is corrupt.
+
+S-DD1
+=====
+The S-DD1 is a custom data decompression chip that can decompress data in real- time as the SNES
+DMA's data from the ROM to RAM. Only two known games use the chip: Star Ocean and Street Fighter
+Alpha 2.
+
+The chip uses a compression algorithm which is now known and included in snes9xTYL, so decompressed graphics packs aren't needed anymore
+
+SA-1
+====
+The SA-1 is a fast, custom 65c816 8/16-bit processor, the same as inside the SNES itself, but
+clocked at 10MHz compared to a maximum of 3.58MHz for the CPU inside the SNES.
+
+The SA-1 isn't just a CPU, it also contains some extra circuits developed by Nintendo which
+includes some very fast RAM, a memory mapper, DMA and, several real-time timers. These include
+Mario RPG, Kirby Superstar and Paradius 3.
+
+OBC1
+====
+OBC1 chip (for Metal Combat)
+
+C4
+==
+The C4 is custom Capcom chip used only in the Megaman X2 and Megaman X3 games. It can scale and
+rotate images, draw line-vector objects and do some simple maths to rotate

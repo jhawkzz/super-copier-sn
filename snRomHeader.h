@@ -2,16 +2,21 @@
 
 #include <cstdint>
 
-#define ROM_HEADER_SIZE_BYTES   (48)
-#define LOROM_HEADER_ADDRESS    (0x7FB0) //MapModes 20 and 23
-#define HIROM_HEADER_ADDRESS    (0xFFB0) //MapMode 21
-#define EX_HIROM_HEADER_ADDRESS	(0x40FFB0) //MapMode 25
+#define ROM_HEADER_SIZE_BYTES           (48)
+#define HEADER_ADDRESS_MAPMODE_20_21_23 (0xFFB0)
+#define HEADER_ADDRESS_MAPMODE_25       (0x40FFB0)
 
 // From 1990-1993(ish) this was the DeveloperID. Then they re-allocated it as a signal that an Expanded Header exists.
 // (Which is actually just the 16 bytes preceding what WAS the start of the header, heh.)
 #define EXPANDED_HEADER_PRESENT (0x33)
 
+#define LOROM_ROM_BANK_BASE_ADDRESS (0x8000)
+#define LOROM_ROM_START_BANK (0x0)
 #define LOROM_BANK_SIZE (32768)
+
+
+#define HIROM_ROM_BANK_BASE_ADDRESS (0x0)
+#define HIROM_ROM_START_BANK (0xC0)
 #define HIROM_BANK_SIZE (65536)
 
 #define MAP_MODE_LOROM_2_68_MHZ	    (0x20) //smw
@@ -98,6 +103,7 @@ struct ROMHeader
     bool IsValid() const;
     void Reset();
     bool IsLoROM() const;
+    bool IsHiROM() const;
     bool HasBattery() const;
     bool HasSuperFX() const;
     uint32_t GetROMSizeBytes() const;
