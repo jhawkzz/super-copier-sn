@@ -38,13 +38,13 @@ bool ROMHeader::IsValid() const
     }
 
     // Check the map mode
-    if (   mValues.mMapMode != MAP_MODE_LOROM_2_68_MHZ
-        && mValues.mMapMode != MAP_MODE_HIROM_2_68_MHZ
-        && mValues.mMapMode != MAP_MODE_SA_1
-        && mValues.mMapMode != MAP_MODE_EX_HIROM_2_68_MHZ
-        && mValues.mMapMode != MAP_MODE_LOROM_3_58_MHZ
-        && mValues.mMapMode != MAP_MODE_HIROM_3_58_MHZ
-        && mValues.mMapMode != MAP_MODE_EX_HIROM_3_58_MHZ)
+    if (   mValues.mMapMode != MAP_MODE_20_2_68_MHZ
+        && mValues.mMapMode != MAP_MODE_21_2_68_MHZ
+        && mValues.mMapMode != MAP_MODE_23_SA_1
+        && mValues.mMapMode != MAP_MODE_25_2_68_MHZ
+        && mValues.mMapMode != MAP_MODE_20_3_58_MHZ
+        && mValues.mMapMode != MAP_MODE_21_3_58_MHZ
+        && mValues.mMapMode != MAP_MODE_25_3_58_MHZ)
     {
         printf("Map Mode Check Failed: Found Value: 0x%x\n", mValues.mMapMode);
         return false;
@@ -129,24 +129,87 @@ void ROMHeader::Reset()
     memset(&mBuffer, 0, sizeof(mBuffer));
 }
 
-bool ROMHeader::IsLoROM() const
+CoProcessor ROMHeader::GetCoProcessor() const
 {
-    if ( mValues.mMapMode == MAP_MODE_LOROM_2_68_MHZ || mValues.mMapMode == MAP_MODE_LOROM_3_58_MHZ )
+    // the cart type might tell us, but we may have to get more specific later.
+    switch (mValues.mCartType)
     {
-        return true;
+        case CART_TYPE_ROM:
+        case CART_TYPE_ROM_RAM:
+        case CART_TYPE_ROM_RAM_BATTERY:
+        {
+            return CoProcessor::None;
+        }
+
+        case CART_TYPE_DSP_ROM: 
+        case CART_TYPE_DSP_ROM_RAM:
+        case CART_TYPE_DSP_ROM_RAM_BATTERY:
+        case CART_TYPE_DSP_ROM_BATTERY:
+        {
+            return CoProcessor::DSP;
+        }
+
+        case CART_TYPE_SUPERFX_ROM:
+        case CART_TYPE_SUPERFX_ROM_RAM:
+        case CART_TYPE_SUPERFX_ROM_RAM_BATTERY:
+        case CART_TYPE_SUPERFX_ROM_BATTERY:
+        {
+            return CoProcessor::SuperFX;
+        }
+
+        case CART_TYPE_OBC1_ROM:
+        case CART_TYPE_OBC1_ROM_RAM:
+        case CART_TYPE_OBC1_ROM_RAM_BATTERY:
+        case CART_TYPE_OBC1_ROM_BATTERY:
+        {
+            return CoProcessor::OBC1;
+        }
+
+        case CART_TYPE_SA1_ROM:
+        case CART_TYPE_SA1_ROM_RAM:
+        case CART_TYPE_SA1_ROM_RAM_BATTERY:
+        case CART_TYPE_SA1_ROM_BATTERY:
+        {
+            return CoProcessor::SA1;
+        }
+
+        case CART_TYPE_OTHER_ROM:
+        case CART_TYPE_OTHER_ROM_RAM:
+        case CART_TYPE_OTHER_ROM_RAM_BATTERY:
+        case CART_TYPE_OTHER_ROM_BATTERY:
+        case CART_TYPE_CUSTOM_ROM:
+        case CART_TYPE_CUSTOM_ROM_RAM:
+        case CART_TYPE_CUSTOM_ROM_RAM_BATTERY:
+        case CART_TYPE_CUSTOM_ROM_BATTERY:
+        {
+            //todo: inspect the title of the game or something like that.
+            return CoProcessor::Unknown;
+        }
+
+        default:
+        {
+            break;
+        }
     }
 
-    return false;
+    return CoProcessor::Unknown;
 }
 
-bool ROMHeader::IsHiROM() const
+MapMode ROMHeader::GetMapMode() const
 {
-    if (mValues.mMapMode == MAP_MODE_HIROM_2_68_MHZ || mValues.mMapMode == MAP_MODE_HIROM_3_58_MHZ)
+    switch (mValues.mMapMode)
     {
-        return true;
+        case MAP_MODE_20_2_68_MHZ: return MapMode::MapMode_20;
+        case MAP_MODE_21_2_68_MHZ: return MapMode::MapMode_21;
+        case MAP_MODE_23_SA_1:     return MapMode::MapMode_23;
+        case MAP_MODE_25_2_68_MHZ: return MapMode::MapMode_25;
+        case MAP_MODE_20_3_58_MHZ: return MapMode::MapMode_20;
+        case MAP_MODE_21_3_58_MHZ: return MapMode::MapMode_21;
+        case MAP_MODE_25_3_58_MHZ: return MapMode::MapMode_25;
+        default:                   break;
     }
 
-    return false;
+    return MapMode::MapMode_Unknown;
 }
 
 bool ROMHeader::HasBattery() const
@@ -247,12 +310,29 @@ uint32_t ROMHeader::GetNumBanks() const
 
 uint32_t ROMHeader::GetBankSizeBytes() const
 {
-    if (IsLoROM())
+    switch (GetMapMode())
     {
-        return LOROM_BANK_SIZE;
+        // LoROM/SA-1
+        case MapMode::MapMode_20:
+        case MapMode::MapMode_23:
+        {
+            return MAP_MODE_20_BANK_SIZE;
+        }
+
+        // HiROM/ExHiROM
+        case MapMode::MapMode_21:
+        case MapMode::MapMode_25:
+        {
+            return MAP_MODE_21_BANK_SIZE;
+        }
+
+        case MapMode::MapMode_Unknown:
+        {
+            break;
+        }
     }
 
-    return HIROM_BANK_SIZE;
+    return 0;
 }
 
 void ROMHeader::GetRegion(char* pRegion, uint32_t size) const
@@ -288,17 +368,17 @@ void ROMHeader::GetTitle(char* pTitle, uint32_t size) const
     pTitle[sizeToCopy] = 0;
 }
 
-void ROMHeader::GetMapMode(char* pMapMode, uint32_t size) const
+void ROMHeader::GetMapModeDisplay(char* pMapMode, uint32_t size) const
 {
     switch(mValues.mMapMode)
     {
-        case MAP_MODE_LOROM_2_68_MHZ:    strncpy(pMapMode, "LoROM, 2.68 MHz", size - 1);    break;
-        case MAP_MODE_HIROM_2_68_MHZ:    strncpy(pMapMode, "HiROM, 2.68 MHz", size - 1);    break;
-        case MAP_MODE_SA_1:              strncpy(pMapMode, "SA1", size - 1);                break;
-        case MAP_MODE_EX_HIROM_2_68_MHZ: strncpy(pMapMode, "Ex HiROM, 2.68 MHz", size - 1); break;
-        case MAP_MODE_LOROM_3_58_MHZ:    strncpy(pMapMode, "LoROM, 3.58 MHz", size - 1);    break;
-        case MAP_MODE_HIROM_3_58_MHZ:    strncpy(pMapMode, "HiROM, 3.58 MHz", size - 1);    break;
-        case MAP_MODE_EX_HIROM_3_58_MHZ: strncpy(pMapMode, "Ex HiROM, 3.58 MHz", size - 1); break;
+        case MAP_MODE_20_2_68_MHZ: strncpy(pMapMode, "Map Mode 20 (LoROM), 2.68 MHz", size - 1);   break;
+        case MAP_MODE_21_2_68_MHZ: strncpy(pMapMode, "Map Mode 21 (HiROM), 2.68 MHz", size - 1);   break;
+        case MAP_MODE_23_SA_1:     strncpy(pMapMode, "Map Mode 23 (SA1)", size - 1);               break;
+        case MAP_MODE_25_2_68_MHZ: strncpy(pMapMode, "Map Mode 25 (ExHiROM), 2.68 MHz", size - 1); break;
+        case MAP_MODE_20_3_58_MHZ: strncpy(pMapMode, "Map Mode 20 (LoROM), 3.58 MHz", size - 1);   break;
+        case MAP_MODE_21_3_58_MHZ: strncpy(pMapMode, "Map Mode 21 (HiROM), 3.58 MHz", size - 1);   break;
+        case MAP_MODE_25_3_58_MHZ: strncpy(pMapMode, "Map Mode 25 (ExHiROM), 3.58 MHz", size - 1); break;
     }
 }
 

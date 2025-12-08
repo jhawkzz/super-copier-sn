@@ -192,7 +192,202 @@ void SuperCopierSN::DownloadFromSRAM(const char* pRomName, uint32_t sramSize)
     pFile = NULL;
 }
 
-void SuperCopierSN::DumpLoROM(const char *pRomName, uint32_t numBanks)
+void SuperCopierSN::DumpROM(const ROMHeader& romHeader, bool firstBankOnly)
+{
+    char romTitle[GAME_TITLE_LEN_BYTES + 1] = { 0 };
+    romHeader.GetTitle(romTitle, sizeof(romTitle));
+
+    char romFileName[300] = { 0 };
+    snprintf(romFileName, sizeof(romFileName) - 1, "./%s_ROMVER_%d%s.%s", romTitle, romHeader.GetRomVersion(), firstBankOnly ? "_FirstBank" : "", ROM_EXTENSION);
+
+    FILE* pFile = fopen(romFileName, "wb");
+    if (!pFile)
+    {
+        printf("Failed to open file '%s' for write!\n", romFileName);
+        return;
+    }
+
+    switch (romHeader.GetCoProcessor())
+    {
+        case CoProcessor::None:
+        {
+            switch (romHeader.GetMapMode())
+            {
+                case MapMode::MapMode_20:
+                {
+                    printf("Dumping ROM with No CoProcessor, MapMode 20 (LoROM)\n");
+                    DumpROM_MapMode20(romHeader, pFile, firstBankOnly); 
+                    break;
+                }
+
+                case MapMode::MapMode_21:
+                {
+                    printf("Dumping ROM with No CoProcessor, MapMode 21 (HiROM)\n");
+                    DumpROM_MapMode21(romHeader, pFile, firstBankOnly);
+                    break;
+                }
+                case MapMode::MapMode_25:
+                {
+                    printf("MapMode 25 coming soon. Cannot dump!");
+                    break;
+                }
+
+                default:
+                {
+                    printf("Found no CoProcessor and MapMode: '%d' which is not supported. Header might be corrupt. Cannot dump!\n", (int32_t)romHeader.GetMapMode());
+                    break;
+                }
+            }
+            break;
+        }
+
+        case CoProcessor::DSP:
+        {
+            switch (romHeader.GetMapMode())
+            {
+                case MapMode::MapMode_20:
+                {
+                    printf("Dumping ROM with DSP CoProcessor, MapMode 20 (LoROM)\n");
+                    DumpROM_MapMode20(romHeader, pFile, firstBankOnly);
+                    break;
+                }
+
+                case MapMode::MapMode_21:
+                {
+                    printf("Dumping ROM with DSP CoProcessor, MapMode 21 (HiROM)\n");
+                    DumpROM_MapMode21(romHeader, pFile, firstBankOnly);
+                    break;
+                }
+
+                default:
+                {
+                    printf("Found DSP CoProcessor and MapMode: '%d' which is not supported. Header might be corrupt. Cannot dump!\n", (int32_t)romHeader.GetMapMode());
+                    break;
+                }
+            }
+            break;
+        }
+
+        case CoProcessor::SuperFX:
+        {
+            printf("Detected SuperFX coprocessor. Cannot dump yet!\n");
+            break;
+        }
+
+        default:
+        {
+            printf("Detected unsupported (as of yet) coprocessor. Cannot dump!\n");
+            break;
+        }
+    }
+
+    printf("DumpROM: Wrote contents to file '%s'\n", romFileName);
+    
+    fclose(pFile);
+    pFile = NULL;
+}
+
+void SuperCopierSN::DumpROM_MapMode20(const ROMHeader& romHeader, FILE* pOutFile, bool firstBankOnly)
+{
+    if (!pOutFile)
+    {
+        printf("No file handle provided for dumping!\n");
+        return;
+    }
+
+    SetCartToIdleState();
+    WAIT();
+
+    uint32_t numBanks = firstBankOnly ? 1 : romHeader.GetNumBanks();
+
+    // LoROM (Memory Map 20) games are in banks $00 thru $7D
+    for (uint32_t c = MAP_MODE_20_ROM_START_BANK; c < MAP_MODE_20_ROM_START_BANK  + numBanks; c++)
+    {
+        printf("Dumping Bank: $%x\n", c);
+
+        for (uint32_t i = 0; i < MAP_MODE_20_BANK_SIZE; i++)
+        {
+            uint32_t address = (c << 16) | (i + MAP_MODE_20_ROM_BANK_BASE_ADDRESS);
+
+            // Disable the cartEnable (disable the rom/sram chips)
+            mCartEnablePin.Disable();
+
+            // Set the address to read a byte from
+            mAddressBus.SetAddress(address);
+
+            // Set the dataBus to HiZ
+            mDataBus.HiZ();
+
+            // Now we're read, so enable the cartEnable
+            mCartEnablePin.Enable();
+            WAIT();
+
+            // Grab the byte off the lines
+            uint8_t value = mDataBus.Read();
+
+            fwrite(&value, 1, 1, pOutFile);
+
+            mDataBus.HiZ();
+        }
+
+        fflush(pOutFile);
+    }
+
+    SetCartToIdleState();
+    WAIT();
+}
+
+void SuperCopierSN::DumpROM_MapMode21(const ROMHeader& romHeader, FILE* pOutFile, bool firstBankOnly)
+{
+    if (!pOutFile)
+    {
+        printf("No file handle provided for dumping!\n");
+        return;
+    }
+
+    SetCartToIdleState();
+    WAIT();
+
+    uint32_t numBanks = firstBankOnly ? 1 : romHeader.GetNumBanks();
+
+    // HiROM (Memory Map 21) games are in banks $C0 thru $FF
+    for (uint32_t c = MAP_MODE_21_ROM_START_BANK; c < MAP_MODE_21_ROM_START_BANK + numBanks; c++)
+    {
+        printf("Dumping Bank: $%x\n", c);
+
+        for (uint32_t i = 0; i < MAP_MODE_21_BANK_SIZE; i++)
+        {
+            uint32_t address = (c << 16) | (i + MAP_MODE_21_ROM_BANK_BASE_ADDRESS);
+
+            // Disable the cartEnable (disable the rom/sram chips)
+            mCartEnablePin.Disable();
+
+            // Set the address to read a byte from
+            mAddressBus.SetAddress(address);
+
+            // Set the dataBus to HiZ
+            mDataBus.HiZ();
+
+            // Now we're read, so enable the cartEnable
+            mCartEnablePin.Enable();
+            WAIT();
+
+            // Grab the byte off the lines
+            uint8_t value = mDataBus.Read();
+
+            fwrite(&value, 1, 1, pOutFile);
+
+            mDataBus.HiZ();
+        }
+
+        fflush(pOutFile);
+    }
+
+    SetCartToIdleState();
+    WAIT();
+}
+
+/*void SuperCopierSN::DumpLoROM(const char *pRomName, uint32_t numBanks)
 {
     char romFileName[300] = { 0 };
     snprintf(romFileName, sizeof(romFileName) - 1, "./%s.%s", pRomName, ROM_EXTENSION);
@@ -312,7 +507,7 @@ void SuperCopierSN::DumpHiROM(const char* pRomName, uint32_t numBanks)
 
     fclose(pFile);
     pFile = NULL;
-}
+}*/
 
 void SuperCopierSN::SetCartToIdleState()
 {
@@ -338,14 +533,14 @@ void SuperCopierSN::SetCartToIdleState()
 
 void SuperCopierSN::PrintGameInfo(const ROMHeader& romHeader)
 {
-    char title[22] = { 0 };
+    char title[GAME_TITLE_LEN_BYTES + 1] = { 0 };
     char region[20] = { 0 };
     char mapMode[50] = { 0 };
     char cartType[50] = { 0 };
 
     romHeader.GetTitle(title, sizeof(title));
     romHeader.GetRegion(region, sizeof(region));
-    romHeader.GetMapMode(mapMode, sizeof(mapMode));
+    romHeader.GetMapModeDisplay(mapMode, sizeof(mapMode));
     romHeader.GetCartType(cartType, sizeof(cartType));
 
     if (!romHeader.IsValid())
@@ -389,7 +584,7 @@ void SuperCopierSN::PrintGameInfo(const ROMHeader& romHeader)
     if (romHeader.HasExpandedHeader())
     {
         printf("\n");
-        char gameCode[22] = { 0 };
+        char gameCode[GAME_CODE_LEN_BYTES + 1] = { 0 };
         romHeader.GetGameCode_ExpandedHeader(gameCode, sizeof(gameCode));
 
         printf("   Expanded Header Features\n");
@@ -536,7 +731,7 @@ void SuperCopierSN::Execute()
     // try reading the header and checking it. If its no good, see if its HiRom
     printf("CHECKING ROM HEADER\n");
     printf("=-=-=-=-=-=-=-=-=-=\n");
-    ReadHeader(mROMHeader, HEADER_ADDRESS_MAPMODE_20_21_23);
+    ReadHeader(mROMHeader, HEADER_ADDRESS_MAPMODE_NOT_25);
     if (!mROMHeader.IsValid())
     {
         ReadHeader(mROMHeader, HEADER_ADDRESS_MAPMODE_25);
@@ -563,7 +758,7 @@ void SuperCopierSN::Execute()
     //}
     //
 
-    char gameName[22] = { 0 };
+    char gameName[GAME_TITLE_LEN_BYTES + 1] = { 0 };
     mROMHeader.GetTitle(gameName, sizeof(gameName));
 
     bool shouldExit = false;	
@@ -576,8 +771,7 @@ void SuperCopierSN::Execute()
         printf("[D]ownload from SRAM\n");
         printf("[U]pload to SRAM\n");
         printf("Dump [R]OM\n");
-        printf("Force [L]oROM Dump Bank 1\n");
-        printf("Force [H]iROM Dump Bank 1\n");
+        printf("Dump [F]irst Bank Only\n");
         printf("[T]est Addresses\n");
         printf("E[x]it\n");
         printf("=-=-=-=-=-=-=-\n");
@@ -613,30 +807,13 @@ void SuperCopierSN::Execute()
             
             case 'r':
             {
-                if (mROMHeader.IsLoROM())
-                {
-                    DumpLoROM(gameName, mROMHeader.GetNumBanks());
-                }
-                else if (mROMHeader.IsHiROM())
-                {
-                    DumpHiROM(gameName, mROMHeader.GetNumBanks());
-                }
-                else
-                {
-                    printf("Unsupported mapping mode! Can't dump (yet)\n");
-                }
+                DumpROM(mROMHeader, false);
                 break;
             }
 
-            case 'l':
+            case 'f':
             {
-                //DumpROM("ForcedDumpLo.smc", 1, LOROM_BANK_SIZE);
-                break;
-            }
-
-            case 'h':
-            {
-                //DumpROM("ForcedDumpHi.smc", 1, HIROM_BANK_SIZE);
+                DumpROM(mROMHeader, true);
                 break;
             }
 
@@ -659,7 +836,6 @@ void SuperCopierSN::Execute()
             }
         }
     }
-    
     
     // Configure lines for removing cartridge
     SetCartToIdleState();

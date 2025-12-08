@@ -7,7 +7,7 @@
 #include "snRomHeader.h"
 
 #define SRAM_BUFFER_SIZE (1024 * 1024)
-#define ROM_BUFFER_SIZE (1024 * 1024 * 16)
+//#define ROM_BUFFER_SIZE (1024 * 1024 * 16)
 
 class SuperCopierSN
 {
@@ -28,8 +28,9 @@ private:
 	void UploadToSRAM(const char* pRomName, uint32_t sramSize);
 	void DownloadFromSRAM(const char* pRomName, uint32_t sramSize);
 
-	void DumpLoROM(const char* pRomName, uint32_t numBanks);
-	void DumpHiROM(const char* pRomName, uint32_t numBanks);
+	void DumpROM(const ROMHeader& romHeader, bool firstBankOnly);
+	void DumpROM_MapMode20(const ROMHeader& romHeader, FILE* pOutFile, bool firstBankOnly);
+	void DumpROM_MapMode21(const ROMHeader& romHeader, FILE* pOutFile, bool firstBankOnly);
 
 	void PrintGameInfo(const ROMHeader& romHeader);
 
@@ -47,6 +48,5 @@ private:
 	SNCartEnablePin mCartEnablePin;
 
 	uint8_t mSRAMBuffer[SRAM_BUFFER_SIZE];
-	uint8_t mROMBuffer[ROM_BUFFER_SIZE];
 	ROMHeader mROMHeader;
 };

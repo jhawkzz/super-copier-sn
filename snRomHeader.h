@@ -2,30 +2,32 @@
 
 #include <cstdint>
 
-#define ROM_HEADER_SIZE_BYTES           (48)
-#define HEADER_ADDRESS_MAPMODE_20_21_23 (0xFFB0)
-#define HEADER_ADDRESS_MAPMODE_25       (0x40FFB0)
+#define ROM_HEADER_SIZE_BYTES         (48)
+#define HEADER_ADDRESS_MAPMODE_NOT_25 (0xFFB0) //Sounds silly, but ALL games put it here, regardless of co-processors, except mapmode 25 games.
+#define HEADER_ADDRESS_MAPMODE_25     (0x40FFB0)
+
+#define GAME_TITLE_LEN_BYTES (21)
+#define GAME_CODE_LEN_BYTES   (4)
 
 // From 1990-1993(ish) this was the DeveloperID. Then they re-allocated it as a signal that an Expanded Header exists.
 // (Which is actually just the 16 bytes preceding what WAS the start of the header, heh.)
 #define EXPANDED_HEADER_PRESENT (0x33)
 
-#define LOROM_ROM_BANK_BASE_ADDRESS (0x8000)
-#define LOROM_ROM_START_BANK (0x0)
-#define LOROM_BANK_SIZE (32768)
+#define MAP_MODE_20_ROM_BANK_BASE_ADDRESS (0x8000)
+#define MAP_MODE_20_ROM_START_BANK        (0x0)
+#define MAP_MODE_20_BANK_SIZE             (32768)
 
+#define MAP_MODE_21_ROM_BANK_BASE_ADDRESS (0x0)
+#define MAP_MODE_21_ROM_START_BANK        (0xC0)
+#define MAP_MODE_21_BANK_SIZE             (65536)
 
-#define HIROM_ROM_BANK_BASE_ADDRESS (0x0)
-#define HIROM_ROM_START_BANK (0xC0)
-#define HIROM_BANK_SIZE (65536)
-
-#define MAP_MODE_LOROM_2_68_MHZ	    (0x20) //smw
-#define MAP_MODE_HIROM_2_68_MHZ	    (0x21)
-#define MAP_MODE_SA_1               (0x23)
-#define MAP_MODE_EX_HIROM_2_68_MHZ  (0x25)
-#define MAP_MODE_LOROM_3_58_MHZ	    (0x30)
-#define MAP_MODE_HIROM_3_58_MHZ	    (0x31)
-#define MAP_MODE_EX_HIROM_3_58_MHZ  (0x35)
+#define MAP_MODE_20_2_68_MHZ (0x20) //smw
+#define MAP_MODE_21_2_68_MHZ (0x21)
+#define MAP_MODE_23_SA_1     (0x23)
+#define MAP_MODE_25_2_68_MHZ (0x25)
+#define MAP_MODE_20_3_58_MHZ (0x30)
+#define MAP_MODE_21_3_58_MHZ (0x31)
+#define MAP_MODE_25_3_58_MHZ (0x35)
 
 #define CART_TYPE_ROM                     (0x00)
 #define CART_TYPE_ROM_RAM                 (0x01)
@@ -96,14 +98,33 @@
 #define REGION_CODE_VARIATION_2 (0x13)
 #define REGION_CODE_VARIATION_3 (0x14)
 
+enum class CoProcessor
+{
+    None,
+    DSP,
+    SuperFX,
+    OBC1,
+    SA1,
+    Unknown
+};
+
+enum class MapMode
+{
+    MapMode_20, //LoROM
+    MapMode_21, //HiROM
+    MapMode_23, //SA-1
+    MapMode_25, //ExHiROM
+    MapMode_Unknown
+};
+
 struct ROMHeader
 {
     ROMHeader() {}
 
     bool IsValid() const;
     void Reset();
-    bool IsLoROM() const;
-    bool IsHiROM() const;
+    CoProcessor GetCoProcessor() const;
+    MapMode GetMapMode() const;
     bool HasBattery() const;
     bool HasSuperFX() const;
     uint32_t GetROMSizeBytes() const;
@@ -112,7 +133,7 @@ struct ROMHeader
     uint32_t GetBankSizeBytes() const;
     void GetRegion(char* pRegion, uint32_t size) const;
     void GetTitle(char* pTitle, uint32_t size) const;
-    void GetMapMode(char* pMapMode, uint32_t size) const;
+    void GetMapModeDisplay(char* pMapMode, uint32_t size) const;
     void GetCartType(char* pCartType, uint32_t size) const;
     uint8_t GetDeveloperId_NoExpandedHeader() const;
     uint8_t GetRomVersion() const;
