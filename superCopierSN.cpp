@@ -47,9 +47,88 @@ void SuperCopierSN::Release()
     mAddressBus.Release();
 }
 
-void SuperCopierSN::UploadToSRAM(const char* pRomName, uint32_t sramSize)
+void SuperCopierSN::UploadToSRAM_MapMode20(const ROMHeader& romHeader, uint8_t* pSRAMBuffer)
 {
-    char sramFileName[300] = { 0 };
+    if (!pSRAMBuffer)
+    {
+        printf("No buffer provided for uploading to SRAM!\n");
+        return;
+    }
+
+    SetCartToIdleState();
+    WAIT();
+
+    //todo: find a game that has SRAM larger than 32KiB.
+    // according to https://problemkaputt.de/fullsnes.htm, some games spread it over multiple banks
+    uint32_t numBanks = 1;
+
+    // LoROM (Memory Map 20) sram is stored at bank 0x70
+    for (uint32_t c = MAP_MODE_20_SRAM_START_BANK; c < MAP_MODE_20_SRAM_START_BANK + numBanks; c++)
+    {
+        printf("Uploading Bank: $%x\n", c);
+
+        for (uint32_t i = 0; i < romHeader.GetRAMSizeBytes(); i++)
+        {
+            uint32_t address = (c << 16) | i;
+
+            // To write a byte, we need to:
+            // Disable writeEnable
+            mWriteEnablePin.Disable();
+            WAIT();
+
+            mReadEnablePin.Enable();
+            WAIT();
+
+            // Disable cartEnable (disable the ROM/SRAM chip output)
+            mCartEnablePin.Disable();
+            WAIT();
+
+            // Put the dataBus into HiZ
+            mDataBus.HiZ();
+            WAIT();
+
+            // Set the address where we want to write
+            mAddressBus.SetAddress(address);
+            WAIT();
+
+            // NOW we're ready to write the byte, so:
+            // Enable cartEnable (enable the ROM/SRAM chips)
+            mCartEnablePin.Enable();
+            WAIT();
+
+            // Enable writeEnable (flips off OutputEnable on SRAM)
+            mWriteEnablePin.Enable();
+            WAIT();
+
+            mReadEnablePin.Disable();
+            WAIT();
+
+            // Put the byte on the dataBus
+            printf("%x: %x\n", address, pSRAMBuffer[i]);
+            mDataBus.Write(pSRAMBuffer[i]);
+            WAIT();
+
+            // Disable writeEnable so SRAM can latch the bytes
+            mWriteEnablePin.Disable();
+            WAIT();
+
+            mReadEnablePin.Enable();
+            WAIT();
+
+            // Put the dataBus into HiZ
+            mDataBus.HiZ();
+            WAIT();
+
+            // Disable cartEnable (disable the ROM/SRAM chips)
+            mCartEnablePin.Disable();
+            WAIT();
+        }
+    }
+
+    SetCartToIdleState();
+    WAIT();
+
+    /*char sramFileName[300] = { 0 };
     snprintf(sramFileName, sizeof(sramFileName) - 1, "./%s.%s", pRomName, SRAM_EXTENSION);
 
     FILE* pFile = fopen(sramFileName, "rb");
@@ -131,65 +210,271 @@ void SuperCopierSN::UploadToSRAM(const char* pRomName, uint32_t sramSize)
     // Now we're done, so put the cart back into a safe, idle state.
     SetCartToIdleState();
     
-    printf("UploadToSRAM: Uploaded contents of file '%s' to cart SRAM.\n", sramFileName);
+    printf("UploadToSRAM: Uploaded contents of file '%s' to cart SRAM.\n", sramFileName);*/
 }
 
-void SuperCopierSN::DownloadFromSRAM(const char* pRomName, uint32_t sramSize)
+void SuperCopierSN::UploadToSRAM(const ROMHeader& romHeader)
 {
-    char sramFileName[300] = { 0 };
-    snprintf(sramFileName, sizeof(sramFileName) - 1, "./%s.%s", pRomName, SRAM_EXTENSION);
+    char romTitle[GAME_TITLE_LEN_BYTES + 1] = { 0 };
+    romHeader.GetTitle(romTitle, sizeof(romTitle));
 
-    FILE* pFile = fopen(sramFileName, "wb");
+    char sramFileName[300] = { 0 };
+    snprintf(sramFileName, sizeof(sramFileName) - 1, "./%s_ROMVER_%d.%s", romTitle, romHeader.GetRomVersion(), SRAM_EXTENSION);
+
+    FILE* pFile = fopen(sramFileName, "rb");
     if (!pFile)
     {
-        printf("DownloadFromSRAM: Failed to open file '%s' for write!\n", sramFileName);
+        printf("Failed to open file '%s' for read!\n", sramFileName);
         return;
     }
 
     memset(mSRAMBuffer, 0, sizeof(mSRAMBuffer));
+    fread(mSRAMBuffer, romHeader.GetRAMSizeBytes(), 1, pFile);
+    fclose(pFile);
 
-    SetCartToIdleState();
-    WAIT();
-
-    for (uint32_t i = 0; i < sramSize; i++)
+    switch (romHeader.GetCoProcessor())
     {
-        uint32_t address = i + SRAM_BANK_START_ADDRESS;
+        case CoProcessor::None:
+        {
+            switch (romHeader.GetMapMode())
+            {
+                case MapMode::MapMode_20:
+                {
+                    printf("Uploading SRAM with No CoProcessor, MapMode 20 (LoROM)\n");
+                    UploadToSRAM_MapMode20(romHeader, mSRAMBuffer);
+                    break;
+                }
 
-        // To read a byte we need to:
-        // disable cart output (disable rom/sram chips)
-        mCartEnablePin.Disable();
-        WAIT();
+                case MapMode::MapMode_21:
+                {
+                    printf("Uploading SRAM with No CoProcessor, MapMode 21 (HiROM) TODO\n");
+                    break;
+                }
 
-        // set the address for the byte we want to read
-        mAddressBus.SetAddress(address);
-        WAIT();
+                case MapMode::MapMode_25:
+                {
+                    printf("MapMode 25 coming soon. Cannot upload!");
+                    break;
+                }
 
-        // Set the dataBus to HiZ
-        mDataBus.HiZ();
-        WAIT();
+                default:
+                {
+                    printf("Found no CoProcessor and MapMode: '%d' which is not supported. Header might be corrupt. Cannot upload!\n", (int32_t)romHeader.GetMapMode());
+                    break;
+                }
+            }
+            break;
+        }
 
-        // enable the cart output (enable the rom/sram chips)
-        mCartEnablePin.Enable();
-        WAIT();
+        case CoProcessor::DSP:
+        {
+            switch (romHeader.GetMapMode())
+            {
+                case MapMode::MapMode_20:
+                {
+                    printf("Uploading SRAM with DSP CoProcessor, MapMode 20 (LoROM)\n");
+                    UploadToSRAM_MapMode20(romHeader, mSRAMBuffer);
+                    break;
+                }
 
-        uint8_t value = mDataBus.Read();
-        WAIT();
-        mSRAMBuffer[i] = value;
-        printf("%x: %x\n", address, value);
+                case MapMode::MapMode_21:
+                {
+                    printf("Uploading ROM with DSP CoProcessor, MapMode 21 (HiROM) TODO\n");
+                    break;
+                }
 
-        mDataBus.HiZ();
-        WAIT();
+                default:
+                {
+                    printf("Found DSP CoProcessor and MapMode: '%d' which is not supported. Header might be corrupt. Cannot upload!\n", (int32_t)romHeader.GetMapMode());
+                    break;
+                }
+            }
+            break;
+        }
+
+        case CoProcessor::SuperFX:
+        {
+            printf("Detected SuperFX coprocessor. Cannot upload yet!\n");
+            break;
+        }
+
+        default:
+        {
+            printf("Detected unsupported (as of yet) coprocessor. Cannot upload!\n");
+            break;
+        }
+    }
+
+    printf("UploadToSRAM: Uploaded contents of file '%s' to cart SRAM\n", sramFileName);
+}
+
+void SuperCopierSN::DownloadFromSRAM(const ROMHeader& romHeader)
+{
+    // problem: For MapMode 20 games with over 32kb of SRAM, i'll need to know whether the banks are 64kb each, or just 32kb each and spread across more.
+    // https://problemkaputt.de/fullsnes.htm
+
+    char romTitle[GAME_TITLE_LEN_BYTES + 1] = { 0 };
+    romHeader.GetTitle(romTitle, sizeof(romTitle));
+
+    char sramFileName[300] = { 0 };
+    snprintf(sramFileName, sizeof(sramFileName) - 1, "./%s_ROMVER_%d.%s", romTitle, romHeader.GetRomVersion(), SRAM_EXTENSION);
+
+    FILE* pFile = fopen(sramFileName, "wb");
+    if (!pFile)
+    {
+        printf("Failed to open file '%s' for write!\n", sramFileName);
+        return;
+    }
+
+    switch (romHeader.GetCoProcessor())
+    {
+        case CoProcessor::None:
+        {
+            switch (romHeader.GetMapMode())
+            {
+                case MapMode::MapMode_20:
+                {
+                    if (romHeader.GetRAMSizeBytes() <= 32768)
+                    {
+                        printf("Downloading SRAM with No CoProcessor, MapMode 20 (LoROM)\n");
+                        DownloadFromSRAM_MapMode20(romHeader, pFile);
+                    }
+                    else
+                    {
+                        printf("SRAM > 32768 bytes with No CoProcessor, MapMode 20 (LoROM) found! THIS MIGHT NOT WORK! WE NEED TO TEST.\n");
+                        DownloadFromSRAM_MapMode20(romHeader, pFile);
+                    }
+                    break;
+                }
+
+                case MapMode::MapMode_21:
+                {
+                    printf("Downloading SRAM with No CoProcessor, MapMode 21 (HiROM) TODO\n");
+                    break;
+                }
+                case MapMode::MapMode_25:
+                {
+                    printf("MapMode 25 coming soon. Cannot Download!");
+                    break;
+                }
+
+                default:
+                {
+                    printf("Found no CoProcessor and MapMode: '%d' which is not supported. Header might be corrupt. Cannot Download!\n", (int32_t)romHeader.GetMapMode());
+                    break;
+                }
+            }
+            break;
+        }
+
+        case CoProcessor::DSP:
+        {
+            switch (romHeader.GetMapMode())
+            {
+                case MapMode::MapMode_20:
+                {
+                    if (romHeader.GetRAMSizeBytes() <= 32768)
+                    {
+                        printf("Downloading SRAM with DSP CoProcessor, MapMode 20 (LoROM)\n");
+                        DownloadFromSRAM_MapMode20(romHeader, pFile);
+                    }
+                    else
+                    {
+                        printf("SRAM > 32768 bytes with DSP CoProcessor, MapMode 20 (LoROM) found! THIS MIGHT NOT WORK! WE NEED TO TEST.\n");
+                        DownloadFromSRAM_MapMode20(romHeader, pFile);
+                    }
+                    break;
+                }
+
+                case MapMode::MapMode_21:
+                {
+                    printf("Downloading SRAM with DSP CoProcessor, MapMode 21 (HiROM) TODO\n");
+                    break;
+                }
+
+                default:
+                {
+                    printf("Found DSP CoProcessor and MapMode: '%d' which is not supported. Header might be corrupt. Cannot Download!\n", (int32_t)romHeader.GetMapMode());
+                    break;
+                }
+            }
+            break;
+        }
+
+        case CoProcessor::SuperFX:
+        {
+            printf("Detected SuperFX coprocessor. Cannot download yet!\n");
+            break;
+        }
+
+        default:
+        {
+            printf("Detected unsupported (as of yet) coprocessor. Cannot download!\n");
+            break;
+        }
+    }
+
+    printf("DownloadFromSRAM: Downloaded contents of SRAM from cart to file '%s'\n", sramFileName);
+
+    fclose(pFile);
+    pFile = NULL;
+}
+
+void SuperCopierSN::DownloadFromSRAM_MapMode20(const ROMHeader& romHeader, FILE* pOutFile)
+{
+    if (!pOutFile)
+    {
+        printf("No file handle provided for dumping!\n");
+        return;
     }
 
     SetCartToIdleState();
     WAIT();
 
-    // Write the buffer
-    fwrite(mSRAMBuffer, sramSize, 1, pFile);
-    printf("DownloadFromSRAM: Downloaded contents of cart SRAM to file '%s'\n", sramFileName);
+    //todo: find a game that has SRAM larger than 32KiB.
+    // according to https://problemkaputt.de/fullsnes.htm#snescartlorommappingromdividedinto32kbanksaround1500games, some games spread it over multiple banks
+    uint32_t numBanks = 1;
+    
+    // LoROM (Memory Map 20) sram is stored at bank 0x70
+    for (uint32_t c = MAP_MODE_20_SRAM_START_BANK; c < MAP_MODE_20_SRAM_START_BANK + numBanks; c++)
+    {
+        printf("Dumping Bank: $%x\n", c);
 
-    fclose(pFile);
-    pFile = NULL;
+        for (uint32_t i = 0; i < romHeader.GetRAMSizeBytes(); i++)
+        {
+            uint32_t address = (c << 16) | i;
+
+            // To read a byte we need to:
+            // disable cart output (disable rom/sram chips)
+            mCartEnablePin.Disable();
+            WAIT();
+
+            // set the address for the byte we want to read
+            mAddressBus.SetAddress(address);
+            WAIT();
+
+            // Set the dataBus to HiZ
+            mDataBus.HiZ();
+            WAIT();
+
+            // enable the cart output (enable the rom/sram chips)
+            mCartEnablePin.Enable();
+            WAIT();
+
+            uint8_t value = mDataBus.Read();
+            WAIT();
+
+            fwrite(&value, 1, 1, pOutFile);
+            
+            mDataBus.HiZ();
+            WAIT();
+        }
+    }
+
+    fflush(pOutFile);
+
+    SetCartToIdleState();
+    WAIT();
 }
 
 void SuperCopierSN::DumpROM(const ROMHeader& romHeader, bool firstBankOnly)
@@ -386,128 +671,6 @@ void SuperCopierSN::DumpROM_MapMode21(const ROMHeader& romHeader, FILE* pOutFile
     SetCartToIdleState();
     WAIT();
 }
-
-/*void SuperCopierSN::DumpLoROM(const char *pRomName, uint32_t numBanks)
-{
-    char romFileName[300] = { 0 };
-    snprintf(romFileName, sizeof(romFileName) - 1, "./%s.%s", pRomName, ROM_EXTENSION);
-
-    FILE* pFile = fopen(romFileName, "wb");
-    if (!pFile)
-    {
-        printf("Failed to open file '%s' for write!\n", romFileName);
-        return;
-    }
-
-    memset(mROMBuffer, 0, sizeof(mROMBuffer));
-        
-    SetCartToIdleState();
-    WAIT();
-
-    uint32_t bufferWriteIndex = 0;
-
-    // LoROM (Memory Map 20/23) games are in banks $00 thru $7D
-    for (uint32_t c = LOROM_ROM_START_BANK; c < LOROM_ROM_START_BANK + numBanks; c++)
-    {
-        printf("Dumping Bank: $%x\n", c);
-
-        for (uint32_t i = 0; i < LOROM_BANK_SIZE; i++)
-        {
-            uint32_t address = (c << 16) | (i + LOROM_ROM_BANK_BASE_ADDRESS);
-
-            // Disable the cartEnable (disable the rom/sram chips)
-            mCartEnablePin.Disable();
-            
-            // Set the address to read a byte from
-            mAddressBus.SetAddress(address);
-            
-            // Set the dataBus to HiZ
-            mDataBus.HiZ();
-            
-            // Now we're read, so enable the cartEnable
-            mCartEnablePin.Enable();
-            WAIT();
-
-            // Grab the byte off the lines
-            uint8_t value = mDataBus.Read();
-            
-            mROMBuffer[bufferWriteIndex] = value;
-            bufferWriteIndex++;
-
-            mDataBus.HiZ();
-        }
-    }
-
-    SetCartToIdleState();
-    WAIT();
-
-    printf("DumpROM: Wrote contents to file '%s'\n", romFileName);
-    fwrite(mROMBuffer, numBanks * LOROM_BANK_SIZE, 1, pFile);
-
-    fclose(pFile);
-    pFile = NULL;
-}
-
-void SuperCopierSN::DumpHiROM(const char* pRomName, uint32_t numBanks)
-{
-    char romFileName[300] = { 0 };
-    snprintf(romFileName, sizeof(romFileName) - 1, "./%s.%s", pRomName, ROM_EXTENSION);
-
-    FILE* pFile = fopen(romFileName, "wb");
-    if (!pFile)
-    {
-        printf("Failed to open file '%s' for write!\n", romFileName);
-        return;
-    }
-
-    memset(mROMBuffer, 0, sizeof(mROMBuffer));
-
-    SetCartToIdleState();
-    WAIT();
-
-    uint32_t bufferWriteIndex = 0;
-
-    // HiROM (Memory Map 21) games are in banks $C0 thru $FF
-    for (uint32_t c = HIROM_ROM_START_BANK; c < HIROM_ROM_START_BANK + numBanks; c++)
-    {
-        printf("Dumping Bank: $%x\n", c);
-
-        for (uint32_t i = 0; i < HIROM_BANK_SIZE; i++)
-        {
-            uint32_t address = (c << 16) | (i + HIROM_ROM_BANK_BASE_ADDRESS);
-
-            // Disable the cartEnable (disable the rom/sram chips)
-            mCartEnablePin.Disable();
-
-            // Set the address to read a byte from
-            mAddressBus.SetAddress(address);
-
-            // Set the dataBus to HiZ
-            mDataBus.HiZ();
-
-            // Now we're read, so enable the cartEnable
-            mCartEnablePin.Enable();
-            WAIT();
-
-            // Grab the byte off the lines
-            uint8_t value = mDataBus.Read();
-
-            mROMBuffer[bufferWriteIndex] = value;
-            bufferWriteIndex++;
-
-            mDataBus.HiZ();
-        }
-    }
-
-    SetCartToIdleState();
-    WAIT();
-
-    printf("DumpROM: Wrote contents to file '%s'\n", romFileName);
-    fwrite(mROMBuffer, numBanks * HIROM_BANK_SIZE, 1, pFile);
-
-    fclose(pFile);
-    pFile = NULL;
-}*/
 
 void SuperCopierSN::SetCartToIdleState()
 {
@@ -795,13 +958,13 @@ void SuperCopierSN::Execute()
         {
             case 'd':
             {
-                DownloadFromSRAM(gameName, mROMHeader.GetRAMSizeBytes());
+                DownloadFromSRAM(mROMHeader);
                 break;
             }
             
             case 'u':
             {
-                UploadToSRAM(gameName, mROMHeader.GetRAMSizeBytes());
+                UploadToSRAM(mROMHeader);
                 break;
             }
             
