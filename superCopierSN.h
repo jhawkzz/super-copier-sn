@@ -29,6 +29,7 @@ private:
 
 	void DownloadFromSRAM(const ROMHeader& romHeader);
 	void DownloadFromSRAM_MapMode20(const ROMHeader& romHeader, FILE* pOutFile);
+	void DownloadFromSRAM_MapMode21(const ROMHeader& romHeader, uint32_t startingBank, FILE* pOutFile);
 
 	void DumpROM(const ROMHeader& romHeader, bool firstBankOnly);
 	void DumpROM_MapMode20(const ROMHeader& romHeader, FILE* pOutFile, bool firstBankOnly);

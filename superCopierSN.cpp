@@ -58,8 +58,6 @@ void SuperCopierSN::UploadToSRAM_MapMode20(const ROMHeader& romHeader, uint8_t* 
     SetCartToIdleState();
     WAIT();
 
-    //todo: find a game that has SRAM larger than 32KiB.
-    // according to https://problemkaputt.de/fullsnes.htm, some games spread it over multiple banks
     uint32_t numBanks = 1;
 
     // LoROM (Memory Map 20) sram is stored at bank 0x70
@@ -235,19 +233,35 @@ void SuperCopierSN::UploadToSRAM(const ROMHeader& romHeader)
     switch (romHeader.GetCoProcessor())
     {
         case CoProcessor::None:
+        case CoProcessor::DSP:
         {
             switch (romHeader.GetMapMode())
             {
                 case MapMode::MapMode_20:
                 {
-                    printf("Uploading SRAM with No CoProcessor, MapMode 20 (LoROM)\n");
-                    UploadToSRAM_MapMode20(romHeader, mSRAMBuffer);
+                    if (romHeader.GetRAMSizeBytes() <= MAP_MODE_20_21_SRAM_MAX_SHIPPED_SIZE)
+                    {
+                        printf("Uploading SRAM with No CoProcessor or DSP, MapMode 20 (LoROM)\n");
+                        UploadToSRAM_MapMode20(romHeader, mSRAMBuffer);
+                    }
+                    else
+                    {
+                        printf("Detected a game with No CoProcessor or DSP, MapMode 20 (LoROM) and a ram size of '%d'. The largest known LoROM game used an ram size of '%d' No game ever shipped with that config. Corrupt header?\n", romHeader.GetRAMSizeBytes(), MAP_MODE_20_21_SRAM_MAX_SHIPPED_SIZE);
+                    }
                     break;
                 }
 
                 case MapMode::MapMode_21:
                 {
-                    printf("Uploading SRAM with No CoProcessor, MapMode 21 (HiROM) TODO\n");
+                    if (romHeader.GetRAMSizeBytes() <= MAP_MODE_20_21_SRAM_MAX_SHIPPED_SIZE)
+                    {
+                        printf("Uploading SRAM with No CoProcessor or DSP, MapMode 21 (HiROM)\n");
+                        UploadToSRAM_MapMode20(romHeader, mSRAMBuffer);
+                    }
+                    else
+                    {
+                        printf("Detected a game with No CoProcessor or DSP, MapMode 21 (HiROM) and a ram size of '%d'. The largest known LoROM game used an ram size of '%d' No game ever shipped with that config. Corrupt header?\n", romHeader.GetRAMSizeBytes(), MAP_MODE_20_21_SRAM_MAX_SHIPPED_SIZE);
+                    }
                     break;
                 }
 
@@ -260,32 +274,6 @@ void SuperCopierSN::UploadToSRAM(const ROMHeader& romHeader)
                 default:
                 {
                     printf("Found no CoProcessor and MapMode: '%d' which is not supported. Header might be corrupt. Cannot upload!\n", (int32_t)romHeader.GetMapMode());
-                    break;
-                }
-            }
-            break;
-        }
-
-        case CoProcessor::DSP:
-        {
-            switch (romHeader.GetMapMode())
-            {
-                case MapMode::MapMode_20:
-                {
-                    printf("Uploading SRAM with DSP CoProcessor, MapMode 20 (LoROM)\n");
-                    UploadToSRAM_MapMode20(romHeader, mSRAMBuffer);
-                    break;
-                }
-
-                case MapMode::MapMode_21:
-                {
-                    printf("Uploading ROM with DSP CoProcessor, MapMode 21 (HiROM) TODO\n");
-                    break;
-                }
-
-                default:
-                {
-                    printf("Found DSP CoProcessor and MapMode: '%d' which is not supported. Header might be corrupt. Cannot upload!\n", (int32_t)romHeader.GetMapMode());
                     break;
                 }
             }
@@ -310,9 +298,6 @@ void SuperCopierSN::UploadToSRAM(const ROMHeader& romHeader)
 
 void SuperCopierSN::DownloadFromSRAM(const ROMHeader& romHeader)
 {
-    // problem: For MapMode 20 games with over 32kb of SRAM, i'll need to know whether the banks are 64kb each, or just 32kb each and spread across more.
-    // https://problemkaputt.de/fullsnes.htm
-
     char romTitle[GAME_TITLE_LEN_BYTES + 1] = { 0 };
     romHeader.GetTitle(romTitle, sizeof(romTitle));
 
@@ -329,29 +314,39 @@ void SuperCopierSN::DownloadFromSRAM(const ROMHeader& romHeader)
     switch (romHeader.GetCoProcessor())
     {
         case CoProcessor::None:
+        case CoProcessor::DSP:
         {
             switch (romHeader.GetMapMode())
             {
                 case MapMode::MapMode_20:
                 {
-                    if (romHeader.GetRAMSizeBytes() <= 32768)
+                    if (romHeader.GetRAMSizeBytes() <= MAP_MODE_20_21_SRAM_MAX_SHIPPED_SIZE)
                     {
-                        printf("Downloading SRAM with No CoProcessor, MapMode 20 (LoROM)\n");
+                        printf("Downloading SRAM with No CoProcessor or DSP, MapMode 20 (LoROM)\n");
                         DownloadFromSRAM_MapMode20(romHeader, pFile);
                     }
                     else
                     {
-                        printf("SRAM > 32768 bytes with No CoProcessor, MapMode 20 (LoROM) found! THIS MIGHT NOT WORK! WE NEED TO TEST.\n");
-                        DownloadFromSRAM_MapMode20(romHeader, pFile);
+                        printf("Detected a game with No CoProcessor or DSP, MapMode 20 (LoROM) and a ram size of '%d'. The largest known LoROM game used an ram size of '%d' No game ever shipped with that config. Corrupt header?\n", romHeader.GetRAMSizeBytes(), MAP_MODE_20_21_SRAM_MAX_SHIPPED_SIZE);
                     }
                     break;
                 }
 
                 case MapMode::MapMode_21:
                 {
-                    printf("Downloading SRAM with No CoProcessor, MapMode 21 (HiROM) TODO\n");
+                    if (romHeader.GetRAMSizeBytes() <= MAP_MODE_20_21_SRAM_MAX_SHIPPED_SIZE)
+                    {
+                        printf("Downloading SRAM with No CoProcessor or DSP, MapMode 21 (HiROM)\n");
+                        //todo: need to handle game specific diffs for games using the uncommon 0x10 starting bank.
+                        DownloadFromSRAM_MapMode21(romHeader, MAP_MODE_21_SRAM_START_BANK_COMMON_START, pFile);
+                    }
+                    else
+                    {
+                        printf("Detected a game with No CoProcessor or DSP, MapMode 21 (HiROM) and a ram size of '%d'. The largest known HiROM game used an ram size of '%d' No game ever shipped with that config. Corrupt header?\n", romHeader.GetRAMSizeBytes(), MAP_MODE_20_21_SRAM_MAX_SHIPPED_SIZE);
+                    }
                     break;
                 }
+
                 case MapMode::MapMode_25:
                 {
                     printf("MapMode 25 coming soon. Cannot Download!");
@@ -360,41 +355,7 @@ void SuperCopierSN::DownloadFromSRAM(const ROMHeader& romHeader)
 
                 default:
                 {
-                    printf("Found no CoProcessor and MapMode: '%d' which is not supported. Header might be corrupt. Cannot Download!\n", (int32_t)romHeader.GetMapMode());
-                    break;
-                }
-            }
-            break;
-        }
-
-        case CoProcessor::DSP:
-        {
-            switch (romHeader.GetMapMode())
-            {
-                case MapMode::MapMode_20:
-                {
-                    if (romHeader.GetRAMSizeBytes() <= 32768)
-                    {
-                        printf("Downloading SRAM with DSP CoProcessor, MapMode 20 (LoROM)\n");
-                        DownloadFromSRAM_MapMode20(romHeader, pFile);
-                    }
-                    else
-                    {
-                        printf("SRAM > 32768 bytes with DSP CoProcessor, MapMode 20 (LoROM) found! THIS MIGHT NOT WORK! WE NEED TO TEST.\n");
-                        DownloadFromSRAM_MapMode20(romHeader, pFile);
-                    }
-                    break;
-                }
-
-                case MapMode::MapMode_21:
-                {
-                    printf("Downloading SRAM with DSP CoProcessor, MapMode 21 (HiROM) TODO\n");
-                    break;
-                }
-
-                default:
-                {
-                    printf("Found DSP CoProcessor and MapMode: '%d' which is not supported. Header might be corrupt. Cannot Download!\n", (int32_t)romHeader.GetMapMode());
+                    printf("Found no CoProcessor or DSP and MapMode: '%d' which is not supported. Header might be corrupt. Cannot Download!\n", (int32_t)romHeader.GetMapMode());
                     break;
                 }
             }
@@ -424,25 +385,78 @@ void SuperCopierSN::DownloadFromSRAM_MapMode20(const ROMHeader& romHeader, FILE*
 {
     if (!pOutFile)
     {
-        printf("No file handle provided for dumping!\n");
+        printf("No file handle provided for downloading sram!\n");
         return;
     }
 
     SetCartToIdleState();
     WAIT();
 
-    //todo: find a game that has SRAM larger than 32KiB.
-    // according to https://problemkaputt.de/fullsnes.htm#snescartlorommappingromdividedinto32kbanksaround1500games, some games spread it over multiple banks
-    uint32_t numBanks = 1;
+    // LoROM (Memory Map 20) sram is stored in bank 0x70
+    printf("Dumping Bank: $%x\n", MAP_MODE_20_SRAM_START_BANK);
+
+    for (uint32_t i = 0; i < romHeader.GetRAMSizeBytes(); i++)
+    {
+        uint32_t address = (MAP_MODE_20_SRAM_START_BANK << 16) | i;
+
+        // To read a byte we need to:
+        // disable cart output (disable rom/sram chips)
+        mCartEnablePin.Disable();
+        WAIT();
+
+        // set the address for the byte we want to read
+        mAddressBus.SetAddress(address);
+        WAIT();
+
+        // Set the dataBus to HiZ
+        mDataBus.HiZ();
+        WAIT();
+
+        // enable the cart output (enable the rom/sram chips)
+        mCartEnablePin.Enable();
+        WAIT();
+
+        uint8_t value = mDataBus.Read();
+        WAIT();
+
+        fwrite(&value, 1, 1, pOutFile);
+            
+        mDataBus.HiZ();
+        WAIT();
+    }
+
+    fflush(pOutFile);
+
+    SetCartToIdleState();
+    WAIT();
+}
+
+void SuperCopierSN::DownloadFromSRAM_MapMode21(const ROMHeader& romHeader, uint32_t startingBank, FILE* pOutFile)
+{
+    if (!pOutFile)
+    {
+        printf("No file handle provided for downloading sram!\n");
+        return;
+    }
+
+    SetCartToIdleState();
+    WAIT();
+
+    // HiROM (Memory Map 21) sram is stored in bank 0x30
+    uint32_t numBanks = romHeader.GetRAMSizeBytes() / MAP_MODE_21_SRAM_BANK_SIZE;
+    if (numBanks == 0) numBanks = 1;
+
+    uint32_t bytesPerBank = romHeader.GetRAMSizeBytes() < MAP_MODE_21_SRAM_BANK_SIZE ? romHeader.GetRAMSizeBytes() : MAP_MODE_21_SRAM_BANK_SIZE;
     
-    // LoROM (Memory Map 20) sram is stored at bank 0x70
-    for (uint32_t c = MAP_MODE_20_SRAM_START_BANK; c < MAP_MODE_20_SRAM_START_BANK + numBanks; c++)
+    printf("Downloading from SRAM: %d bytes per bank. %d banks.\n", bytesPerBank, numBanks);
+
+    for (uint32_t c = startingBank; c < startingBank + numBanks; c++)
     {
         printf("Dumping Bank: $%x\n", c);
 
-        for (uint32_t i = 0; i < romHeader.GetRAMSizeBytes(); i++)
+        for (uint32_t i = 0; i < bytesPerBank; i++)
         {
-            uint32_t address = (c << 16) | i;
+            uint32_t address = (c << 16) | (i + MAP_MODE_21_SRAM_BANK_BASE_ADDRESS);
 
             // To read a byte we need to:
             // disable cart output (disable rom/sram chips)
@@ -465,7 +479,7 @@ void SuperCopierSN::DownloadFromSRAM_MapMode20(const ROMHeader& romHeader, FILE*
             WAIT();
 
             fwrite(&value, 1, 1, pOutFile);
-            
+
             mDataBus.HiZ();
             WAIT();
         }
@@ -495,19 +509,20 @@ void SuperCopierSN::DumpROM(const ROMHeader& romHeader, bool firstBankOnly)
     switch (romHeader.GetCoProcessor())
     {
         case CoProcessor::None:
+        case CoProcessor::DSP:
         {
             switch (romHeader.GetMapMode())
             {
                 case MapMode::MapMode_20:
                 {
-                    printf("Dumping ROM with No CoProcessor, MapMode 20 (LoROM)\n");
+                    printf("Dumping ROM with No CoProcessor or DSP, MapMode 20 (LoROM)\n");
                     DumpROM_MapMode20(romHeader, pFile, firstBankOnly); 
                     break;
                 }
 
                 case MapMode::MapMode_21:
                 {
-                    printf("Dumping ROM with No CoProcessor, MapMode 21 (HiROM)\n");
+                    printf("Dumping ROM with No CoProcessor or DSP, MapMode 21 (HiROM)\n");
                     DumpROM_MapMode21(romHeader, pFile, firstBankOnly);
                     break;
                 }
@@ -519,40 +534,13 @@ void SuperCopierSN::DumpROM(const ROMHeader& romHeader, bool firstBankOnly)
 
                 default:
                 {
-                    printf("Found no CoProcessor and MapMode: '%d' which is not supported. Header might be corrupt. Cannot dump!\n", (int32_t)romHeader.GetMapMode());
+                    printf("Found no CoProcessor or DSP and MapMode: '%d' which is not supported. Header might be corrupt. Cannot dump!\n", (int32_t)romHeader.GetMapMode());
                     break;
                 }
             }
             break;
         }
-
-        case CoProcessor::DSP:
-        {
-            switch (romHeader.GetMapMode())
-            {
-                case MapMode::MapMode_20:
-                {
-                    printf("Dumping ROM with DSP CoProcessor, MapMode 20 (LoROM)\n");
-                    DumpROM_MapMode20(romHeader, pFile, firstBankOnly);
-                    break;
-                }
-
-                case MapMode::MapMode_21:
-                {
-                    printf("Dumping ROM with DSP CoProcessor, MapMode 21 (HiROM)\n");
-                    DumpROM_MapMode21(romHeader, pFile, firstBankOnly);
-                    break;
-                }
-
-                default:
-                {
-                    printf("Found DSP CoProcessor and MapMode: '%d' which is not supported. Header might be corrupt. Cannot dump!\n", (int32_t)romHeader.GetMapMode());
-                    break;
-                }
-            }
-            break;
-        }
-
+        
         case CoProcessor::SuperFX:
         {
             printf("Detected SuperFX coprocessor. Cannot dump yet!\n");

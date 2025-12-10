@@ -22,6 +22,38 @@
 #define MAP_MODE_21_ROM_START_BANK        (0xC0)
 #define MAP_MODE_21_BANK_SIZE             (65536)
 
+// HiROM sram is complicated.
+/*
+* Board               ROM Area      ROM Mirrors   SRAM Area
+  Type                at 0000-FFFF  at 8000-FFFF  at 6000-7FFF
+  SHVC-1J3B-01        40-7d,c0-ff   00-3f,80-bf   20-3f,a0-bf
+  SHVC-1J1M-11,20     40-7d,c0-ff   00-3f,80-bf   20-3f,a0-bf
+  SHVC-1J3M-01,11,20  40-7d,c0-ff   00-3f,80-bf   20-3f,a0-bf
+  SHVC-BJ3M-10        40-7d,c0-ff   00-3f,80-bf   20-3f,a0-bf [FF3]
+  SHVC-1J5M-11,20     40-7d,c0-ff   00-3f,80-bf   20-3f,a0-bf [Uncharted Waters, 256kb so important]
+
+  SHVC-2J3M-01,11,20  40-7d,c0-ff   00-3f,80-bf   10-1f,30-3f,90-9f,b0-bf [Secret of Mana, 7th Saga]
+  SHVC-2J5M-01        40-7d,c0-ff   00-3f,80-bf   10-1f,90-9f,30-3f,b0-bf [Brandish	USA	SNS-QF-0, Operation Europe: Path To Victory 1939-45	USA	SNS-YP-0]
+  SHVC-LJ3M-01        40-7d,c0-ff   00-3f,80-bf   80-bf [Tales of Phantasia]
+*/
+// Common because MOST games use this mapping, and it goes from banks 0x20 to 0x3F, at 8192 bytes per bank.
+// No game shipped using more than 32KiB, which would only require reading 0x20->0x23.
+// 
+// A FEW boards store it at 10-1F. Again, we only need to read 0x10->0x13.
+#define MAP_MODE_21_SRAM_START_BANK_COMMON_START (0x20) 
+
+// SoM, 7th Saga, Brandish, Operation Europe: Path to Victory, etc.
+#define MAP_MODE_21_SRAM_START_BANK_UNCOMMON_START (0x10) 
+
+#define MAP_MODE_21_SRAM_BANK_BASE_ADDRESS (0x6000)
+#define MAP_MODE_21_SRAM_BANK_SIZE         (8192)
+
+// This is the biggest sram chip that shipped on map mode 20 carts. (Mario Paint used this size). 
+// Theoretically bigger chips could be supported, but their mapping would have depended on the board used.
+// Older boards mapped it to 64KiB banks, newer boards would have mapped it only to the lower 32KiB and spread it across banks.
+// https://problemkaputt.de/fullsnes.htm
+#define MAP_MODE_20_21_SRAM_MAX_SHIPPED_SIZE (32768) 
+
 #define MAP_MODE_20_2_68_MHZ (0x20) //smw
 #define MAP_MODE_21_2_68_MHZ (0x21)
 #define MAP_MODE_23_SA_1     (0x23)
