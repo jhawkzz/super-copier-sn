@@ -6,7 +6,7 @@
 			
 	That's 90% of games. Need to add support for SA_1, then SuperFX and other outliers (and Map Mode 25)
 	
-	verified with Donkey Kong Country (HiROM), pilotwings (LoROM), Super mario world (hiROM)
+	verified with Donkey Kong Country (HiROM), pilotwings (LoROM), Super mario world (LoROM)
 	and of course the prior ones. The bit instability was likely just the loose wires on the GPIO ports.
 	
 	next up: support proper sram read/write for no/dsp 20/21 mode games.
