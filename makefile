@@ -12,7 +12,7 @@ INCLUDES = -I/path/to/include
 LIBS = -lgpiodcxx -lgpiod
 
 # Source files
-SRCS = cartPin.cpp gpioLine.cpp main.cpp snCartPins.cpp superCopierSN.cpp snRomHeader.cpp snCartIO.cpp
+SRCS = cartPin.cpp gpioLine.cpp main.cpp snCartPins.cpp superCopierSN.cpp snRomHeader.cpp snCartIO.cpp snBoardNoMMCMode20.cpp snBoardNoMMCMode21.cpp
 
 # Object files
 OBJS = $(SRCS:.cpp=.o)

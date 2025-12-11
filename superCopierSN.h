@@ -23,15 +23,9 @@ private:
 	void SetCartToIdleState(SNCartIO& snCartIO);
 
 	void UploadToSRAM(const ROMHeader& romHeader, SNCartIO& snCartIO);
-	void UploadToSRAM_MapMode20(const ROMHeader& romHeader, SNCartIO& snCartIO, uint8_t* pSRAMBuffer);
-
 	void DownloadFromSRAM(const ROMHeader& romHeader, SNCartIO& snCartIO);
-	void DownloadFromSRAM_MapMode20(const ROMHeader& romHeader, SNCartIO& snCartIO, FILE* pOutFile);
-	void DownloadFromSRAM_MapMode21(const ROMHeader& romHeader, SNCartIO& snCartIO, uint32_t startingBank, FILE* pOutFile);
 
 	void DumpROM(const ROMHeader& romHeader, SNCartIO& snCartIO, bool firstBankOnly);
-	void DumpROM_MapMode20(const ROMHeader& romHeader, SNCartIO& snCartIO, FILE* pOutFile, bool firstBankOnly);
-	void DumpROM_MapMode21(const ROMHeader& romHeader, SNCartIO& snCartIO, FILE* pOutFile, bool firstBankOnly);
 
 	void PrintGameInfo(const ROMHeader& romHeader);
 
