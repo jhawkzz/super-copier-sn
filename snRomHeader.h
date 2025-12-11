@@ -36,14 +36,13 @@
   SHVC-2J5M-01        40-7d,c0-ff   00-3f,80-bf   10-1f,90-9f,30-3f,b0-bf [Brandish	USA	SNS-QF-0, Operation Europe: Path To Victory 1939-45	USA	SNS-YP-0]
   SHVC-LJ3M-01        40-7d,c0-ff   00-3f,80-bf   80-bf [Tales of Phantasia]
 */
-// Common because MOST games use this mapping, and it goes from banks 0x20 to 0x3F, at 8192 bytes per bank.
+// Common because MOST boards use this mapping, and it goes from banks 0x20 to 0x3F, at 8192 bytes per bank.
 // No game shipped using more than 32KiB, which would only require reading 0x20->0x23.
-// 
-// A FEW boards store it at 10-1F. Again, we only need to read 0x10->0x13.
-#define MAP_MODE_21_SRAM_START_BANK_COMMON_START (0x20) 
+#define MAP_MODE_21_SRAM_START_BANK_COMMON_BOARD (0x20) 
 
 // SoM, 7th Saga, Brandish, Operation Europe: Path to Victory, etc.
-#define MAP_MODE_21_SRAM_START_BANK_UNCOMMON_START (0x10) 
+// Less commonly, some boards mapped to 0x10, which would require reading 0x10->0x13
+#define MAP_MODE_21_SRAM_START_BANK_SHVC_2JXX_XX (0x10) 
 
 #define MAP_MODE_21_SRAM_BANK_BASE_ADDRESS (0x6000)
 #define MAP_MODE_21_SRAM_BANK_SIZE         (8192)
@@ -157,6 +156,7 @@ struct ROMHeader
     bool IsValid() const;
     void Reset();
     CoProcessor GetCoProcessor() const;
+    bool HasMMC() const; // Lets us know if the cart has an onboard MMC that could change memory mapping.
     MapMode GetMapMode() const;
     bool HasBattery() const;
     bool HasSuperFX() const;

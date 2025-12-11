@@ -12,12 +12,19 @@ class SNBoardNoMMCMode21
 {
 public:
 	static void UploadToSRAM(const ROMHeader& romHeader, SNCartIO& snCartIO, uint8_t* pSRAMBuffer);
-	static void DownloadFromSRAM(const ROMHeader& romHeader, SNCartIO& snCartIO, uint32_t startingBank, FILE* pOutFile);
+	static void DownloadFromSRAM(const ROMHeader& romHeader, SNCartIO& snCartIO, FILE* pOutFile);
 	
-	static void DumpROM(const ROMHeader& romHeader, SNCartIO& snCartIO, FILE* pOutFile, bool firstBankOnly);
+	static void DumpROM(const ROMHeader& romHeader, SNCartIO& snCartIO, FILE* pOutFile);
 
 private:
+	static void UploadToSRAM_Internal(const ROMHeader& romHeader, SNCartIO& snCartIO, uint32_t startingBank, uint8_t* pSRAMBuffer);
+	static void DownloadFromSRAM_Internal(const ROMHeader& romHeader, SNCartIO& snCartIO, uint32_t startingBank, FILE* pOutFile);
+
 	static void SetCartToIdleState(SNCartIO& snCartIO);
+	
 	static void EnableROM_DisableSRAM(SNCartIO& snCartIO);
 	static void DisableROM_EnableSRAM(SNCartIO& snCartIO);
+	
+	static bool IsSRAMValid(const ROMHeader& romHeader);
+	static bool IsROMValid(const ROMHeader& romHeader);
 };

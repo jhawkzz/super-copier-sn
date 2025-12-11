@@ -24,8 +24,7 @@ private:
 
 	void UploadToSRAM(const ROMHeader& romHeader, SNCartIO& snCartIO);
 	void DownloadFromSRAM(const ROMHeader& romHeader, SNCartIO& snCartIO);
-
-	void DumpROM(const ROMHeader& romHeader, SNCartIO& snCartIO, bool firstBankOnly);
+	void DumpROM(const ROMHeader& romHeader, SNCartIO& snCartIO);
 
 	void PrintGameInfo(const ROMHeader& romHeader);
 

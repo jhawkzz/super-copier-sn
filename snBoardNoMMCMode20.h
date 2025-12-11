@@ -14,13 +14,10 @@ public:
 	static void UploadToSRAM(const ROMHeader& romHeader, SNCartIO& snCartIO, uint8_t* pSRAMBuffer);
 	static void DownloadFromSRAM(const ROMHeader& romHeader, SNCartIO& snCartIO, FILE* pOutFile);
 	
-	static void DumpROM(const ROMHeader& romHeader, SNCartIO& snCartIO, FILE* pOutFile, bool firstBankOnly);
+	static void DumpROM(const ROMHeader& romHeader, SNCartIO& snCartIO, FILE* pOutFile);
 
 private:
 	static void SetCartToIdleState(SNCartIO& snCartIO);
 	static void EnableROMAndSRAMChips(SNCartIO& snCartIO);
 	static void DisableROMAndSRAMChips(SNCartIO& snCartIO);
 };
-
-//todo: test this refactor. verified HiROM works! just double check LoROM
-// smw download rom, download / upload sram

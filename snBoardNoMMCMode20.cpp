@@ -17,10 +17,8 @@ void SNBoardNoMMCMode20::UploadToSRAM(const ROMHeader& romHeader, SNCartIO& snCa
     SetCartToIdleState(snCartIO);
     WAIT();
 
-    uint32_t numBanks = 1;
-
     // LoROM (Memory Map 20) sram is stored at bank 0x70
-    for (uint32_t c = MAP_MODE_20_SRAM_START_BANK; c < MAP_MODE_20_SRAM_START_BANK + numBanks; c++)
+    for (uint32_t c = MAP_MODE_20_SRAM_START_BANK; c < MAP_MODE_20_SRAM_START_BANK + 1; c++)
     {
         printf("Uploading Bank: $%x\n", c);
 
@@ -59,7 +57,7 @@ void SNBoardNoMMCMode20::UploadToSRAM(const ROMHeader& romHeader, SNCartIO& snCa
             WAIT();
 
             // Put the byte on the dataBus
-            printf("%x: %x\n", address, pSRAMBuffer[i]);
+            //printf("%x: %x\n", address, pSRAMBuffer[i]);
             snCartIO.mDataBus.Write(pSRAMBuffer[i]);
             WAIT();
 
@@ -80,90 +78,6 @@ void SNBoardNoMMCMode20::UploadToSRAM(const ROMHeader& romHeader, SNCartIO& snCa
     }
 
     SetCartToIdleState(snCartIO);
-    
-    /*char sramFileName[300] = { 0 };
-    snprintf(sramFileName, sizeof(sramFileName) - 1, "./%s.%s", pRomName, SRAM_EXTENSION);
-
-    FILE* pFile = fopen(sramFileName, "rb");
-    if (pFile)
-    {
-        memset(mSRAMBuffer, 0, sizeof(mSRAMBuffer));
-
-        fread(mSRAMBuffer, sramSize, 1, pFile);
-
-        fclose(pFile);
-        pFile = NULL;
-    }
-    else
-    {
-        printf("UploadToSRAM: Failed to open sram file '%s.%s'.\n", pRomName, SRAM_EXTENSION);
-        return;
-    }
-
-    SetCartToIdleState();
-    WAIT();
-
-    for (uint32_t i = 0; i < sramSize; i++)
-    {
-        uint32_t address = i + SRAM_BANK_START_ADDRESS;
-
-        // To write a byte, we need to:
-        // Disable writeEnable
-        mWriteEnablePin.Disable();
-        WAIT();
-
-        mReadEnablePin.Enable();
-        WAIT();
-
-        // Disable cartEnable (disable the ROM/SRAM chips)
-        mCartEnablePin.Disable();
-        WAIT();
-
-        // Put the dataBus into HiZ
-        mDataBus.HiZ();
-        WAIT();
-
-        // Set the address where we want to write
-        mAddressBus.SetAddress(address);
-        WAIT();
-
-        // NOW we're ready to write the byte, so:
-        // Enable cartEnable (enable the ROM/SRAM chips)
-        mCartEnablePin.Enable();
-        WAIT();
-
-        // Enable writeEnable (flips off OutputEnable on SRAM)
-        mWriteEnablePin.Enable();
-        WAIT();
-
-        mReadEnablePin.Disable();
-        WAIT();
-
-        // Put the byte on the dataBus
-        printf("%x: %x\n", address, mSRAMBuffer[i]);
-        mDataBus.Write(mSRAMBuffer[i]);
-        WAIT();
-
-        // Disable writeEnable so SRAM can latch the bytes
-        mWriteEnablePin.Disable();
-        WAIT();
-
-        mReadEnablePin.Enable();
-        WAIT();
-
-        // Put the dataBus into HiZ
-        mDataBus.HiZ();
-        WAIT();
-
-        // Disable cartEnable (disable the ROM/SRAM chips)
-        mCartEnablePin.Disable();
-        WAIT();
-    }
-
-    // Now we're done, so put the cart back into a safe, idle state.
-    SetCartToIdleState();
-
-    printf("UploadToSRAM: Uploaded contents of file '%s' to cart SRAM.\n", sramFileName);*/
 }
 
 void SNBoardNoMMCMode20::DownloadFromSRAM(const ROMHeader& romHeader, SNCartIO& snCartIO, FILE* pOutFile)
@@ -211,7 +125,7 @@ void SNBoardNoMMCMode20::DownloadFromSRAM(const ROMHeader& romHeader, SNCartIO& 
     SetCartToIdleState(snCartIO);
 }
 
-void SNBoardNoMMCMode20::DumpROM(const ROMHeader& romHeader, SNCartIO& snCartIO, FILE* pOutFile, bool firstBankOnly)
+void SNBoardNoMMCMode20::DumpROM(const ROMHeader& romHeader, SNCartIO& snCartIO, FILE* pOutFile)
 {
     if (!pOutFile)
     {
@@ -221,10 +135,8 @@ void SNBoardNoMMCMode20::DumpROM(const ROMHeader& romHeader, SNCartIO& snCartIO,
 
     SetCartToIdleState(snCartIO);
 
-    uint32_t numBanks = firstBankOnly ? 1 : romHeader.GetNumBanks();
-
     // LoROM (Memory Map 20) games are in banks $00 thru $7D
-    for (uint32_t c = MAP_MODE_20_ROM_START_BANK; c < MAP_MODE_20_ROM_START_BANK + numBanks; c++)
+    for (uint32_t c = MAP_MODE_20_ROM_START_BANK; c < MAP_MODE_20_ROM_START_BANK + romHeader.GetNumBanks(); c++)
     {
         printf("Dumping Bank: $%x\n", c);
 

@@ -48,70 +48,42 @@ void SuperCopierSN::UploadToSRAM(const ROMHeader& romHeader, SNCartIO& snCartIO)
     fread(mSRAMBuffer, romHeader.GetRAMSizeBytes(), 1, pFile);
     fclose(pFile);
 
-    switch (romHeader.GetCoProcessor())
+    // If no MMC (very, VERY common) we can go off of just the map mode.
+    if (!romHeader.HasMMC())
     {
-        case CoProcessor::None:
-        case CoProcessor::DSP:
+        switch (romHeader.GetMapMode())
         {
-            switch (romHeader.GetMapMode())
+            case MapMode::MapMode_20:
             {
-                case MapMode::MapMode_20:
-                {
-                    if (romHeader.GetRAMSizeBytes() <= MAP_MODE_20_21_SRAM_MAX_SHIPPED_SIZE)
-                    {
-                        printf("Uploading SRAM with No CoProcessor or DSP, MapMode 20 (LoROM)\n");
-                        SNBoardNoMMCMode20::UploadToSRAM(romHeader, snCartIO, mSRAMBuffer);
-                    }
-                    else
-                    {
-                        printf("Detected a game with No CoProcessor or DSP, MapMode 20 (LoROM) and a ram size of '%d'. The largest known LoROM game used an ram size of '%d' No game ever shipped with that config. Corrupt header?\n", romHeader.GetRAMSizeBytes(), MAP_MODE_20_21_SRAM_MAX_SHIPPED_SIZE);
-                    }
-                    break;
-                }
-
-                case MapMode::MapMode_21:
-                {
-                    if (romHeader.GetRAMSizeBytes() <= MAP_MODE_20_21_SRAM_MAX_SHIPPED_SIZE)
-                    {
-                        printf("Uploading SRAM with No CoProcessor or DSP, MapMode 21 (HiROM)\n");
-                        SNBoardNoMMCMode21::UploadToSRAM(romHeader, snCartIO, mSRAMBuffer);
-                    }
-                    else
-                    {
-                        printf("Detected a game with No CoProcessor or DSP, MapMode 21 (HiROM) and a ram size of '%d'. The largest known LoROM game used an ram size of '%d' No game ever shipped with that config. Corrupt header?\n", romHeader.GetRAMSizeBytes(), MAP_MODE_20_21_SRAM_MAX_SHIPPED_SIZE);
-                    }
-                    break;
-                }
-
-                case MapMode::MapMode_25:
-                {
-                    printf("MapMode 25 coming soon. Cannot upload!");
-                    break;
-                }
-
-                default:
-                {
-                    printf("Found no CoProcessor and MapMode: '%d' which is not supported. Header might be corrupt. Cannot upload!\n", (int32_t)romHeader.GetMapMode());
-                    break;
-                }
+                SNBoardNoMMCMode20::UploadToSRAM(romHeader, snCartIO, mSRAMBuffer);
+                break;
             }
-            break;
-        }
 
-        case CoProcessor::SuperFX:
-        {
-            printf("Detected SuperFX coprocessor. Cannot upload yet!\n");
-            break;
-        }
+            case MapMode::MapMode_21:
+            {
+                SNBoardNoMMCMode21::UploadToSRAM(romHeader, snCartIO, mSRAMBuffer);
+                break;
+            }
 
-        default:
-        {
-            printf("Detected unsupported (as of yet) coprocessor. Cannot upload!\n");
-            break;
+            default:
+            {
+                printf("Unsupported No-MMC map mode detected. Cannot upload SRAM.\n");
+                break;
+            }
         }
     }
-
-    printf("UploadToSRAM: Uploaded contents of file '%s' to cart SRAM\n", sramFileName);
+    else
+    {
+        // the coProcessor will inform us as to how to dump.
+        switch (romHeader.GetCoProcessor())
+        {
+            default:
+            {
+                printf("Detected unsupported (as of yet) coprocessor. Cannot upload!\n");
+                break;
+            }
+        }
+    }
 }
 
 void SuperCopierSN::DownloadFromSRAM(const ROMHeader& romHeader, SNCartIO& snCartIO)
@@ -129,83 +101,54 @@ void SuperCopierSN::DownloadFromSRAM(const ROMHeader& romHeader, SNCartIO& snCar
         return;
     }
 
-    switch (romHeader.GetCoProcessor())
+    // If no MMC (very, VERY common) we can go off of just the map mode.
+    if (!romHeader.HasMMC())
     {
-        case CoProcessor::None:
-        case CoProcessor::DSP:
+        switch (romHeader.GetMapMode())
         {
-            switch (romHeader.GetMapMode())
+            case MapMode::MapMode_20:
             {
-                case MapMode::MapMode_20:
-                {
-                    if (romHeader.GetRAMSizeBytes() <= MAP_MODE_20_21_SRAM_MAX_SHIPPED_SIZE)
-                    {
-                        printf("Downloading SRAM with No CoProcessor or DSP, MapMode 20 (LoROM)\n");
-                        SNBoardNoMMCMode20::DownloadFromSRAM(romHeader, snCartIO, pFile);
-                    }
-                    else
-                    {
-                        printf("Detected a game with No CoProcessor or DSP, MapMode 20 (LoROM) and a ram size of '%d'. The largest known LoROM game used an ram size of '%d' No game ever shipped with that config. Corrupt header?\n", romHeader.GetRAMSizeBytes(), MAP_MODE_20_21_SRAM_MAX_SHIPPED_SIZE);
-                    }
-                    break;
-                }
-
-                case MapMode::MapMode_21:
-                {
-                    if (romHeader.GetRAMSizeBytes() <= MAP_MODE_20_21_SRAM_MAX_SHIPPED_SIZE)
-                    {
-                        printf("Downloading SRAM with No CoProcessor or DSP, MapMode 21 (HiROM)\n");
-                        //todo: need to handle game specific diffs for games using the uncommon 0x10 starting bank.
-                        SNBoardNoMMCMode21::DownloadFromSRAM(romHeader, snCartIO, MAP_MODE_21_SRAM_START_BANK_COMMON_START, pFile);
-                    }
-                    else
-                    {
-                        printf("Detected a game with No CoProcessor or DSP, MapMode 21 (HiROM) and a ram size of '%d'. The largest known HiROM game used an ram size of '%d' No game ever shipped with that config. Corrupt header?\n", romHeader.GetRAMSizeBytes(), MAP_MODE_20_21_SRAM_MAX_SHIPPED_SIZE);
-                    }
-                    break;
-                }
-
-                case MapMode::MapMode_25:
-                {
-                    printf("MapMode 25 coming soon. Cannot Download!");
-                    break;
-                }
-
-                default:
-                {
-                    printf("Found no CoProcessor or DSP and MapMode: '%d' which is not supported. Header might be corrupt. Cannot Download!\n", (int32_t)romHeader.GetMapMode());
-                    break;
-                }
+                SNBoardNoMMCMode20::DownloadFromSRAM(romHeader, snCartIO, pFile);
+                break;
             }
-            break;
-        }
 
-        case CoProcessor::SuperFX:
-        {
-            printf("Detected SuperFX coprocessor. Cannot download yet!\n");
-            break;
-        }
+            case MapMode::MapMode_21:
+            {
+                SNBoardNoMMCMode21::DownloadFromSRAM(romHeader, snCartIO, pFile);
+                break;
+            }
 
-        default:
-        {
-            printf("Detected unsupported (as of yet) coprocessor. Cannot download!\n");
-            break;
+            default:
+            {
+                printf("Unsupported No-MMC map mode detected. Cannot download SRAM.\n");
+                break;
+            }
         }
     }
-
-    printf("DownloadFromSRAM: Downloaded contents of SRAM from cart to file '%s'\n", sramFileName);
+    else
+    {
+        // the coProcessor will inform us as to how to dump.
+        switch (romHeader.GetCoProcessor())
+        {
+            default:
+            {
+                printf("Detected unsupported (as of yet) coprocessor. Cannot download!\n");
+                break;
+            }
+        }
+    }
 
     fclose(pFile);
     pFile = NULL;
 }
       
-void SuperCopierSN::DumpROM(const ROMHeader& romHeader, SNCartIO& snCartIO, bool firstBankOnly)
+void SuperCopierSN::DumpROM(const ROMHeader& romHeader, SNCartIO& snCartIO)
 {
     char romTitle[GAME_TITLE_LEN_BYTES + 1] = { 0 };
     romHeader.GetTitle(romTitle, sizeof(romTitle));
 
     char romFileName[300] = { 0 };
-    snprintf(romFileName, sizeof(romFileName) - 1, "./%s_ROMVER_%d%s.%s", romTitle, romHeader.GetRomVersion(), firstBankOnly ? "_FirstBank" : "", ROM_EXTENSION);
+    snprintf(romFileName, sizeof(romFileName) - 1, "./%s_ROMVER_%d.%s", romTitle, romHeader.GetRomVersion(), ROM_EXTENSION);
 
     FILE* pFile = fopen(romFileName, "wb");
     if (!pFile)
@@ -214,55 +157,42 @@ void SuperCopierSN::DumpROM(const ROMHeader& romHeader, SNCartIO& snCartIO, bool
         return;
     }
 
-    switch (romHeader.GetCoProcessor())
+    // If no MMC (very, VERY common) we can go off of just the map mode.
+    if (!romHeader.HasMMC())
     {
-        case CoProcessor::None:
-        case CoProcessor::DSP:
+        switch (romHeader.GetMapMode())
         {
-            switch (romHeader.GetMapMode())
+            case MapMode::MapMode_20:
             {
-                case MapMode::MapMode_20:
-                {
-                    printf("Dumping ROM with No CoProcessor or DSP, MapMode 20 (LoROM)\n");
-                    SNBoardNoMMCMode20::DumpROM(romHeader, snCartIO, pFile, firstBankOnly);
-                    break;
-                }
-
-                case MapMode::MapMode_21:
-                {
-                    printf("Dumping ROM with No CoProcessor or DSP, MapMode 21 (HiROM)\n");
-                    SNBoardNoMMCMode21::DumpROM(romHeader, snCartIO, pFile, firstBankOnly);
-                    break;
-                }
-                case MapMode::MapMode_25:
-                {
-                    printf("MapMode 25 coming soon. Cannot dump!");
-                    break;
-                }
-
-                default:
-                {
-                    printf("Found no CoProcessor or DSP and MapMode: '%d' which is not supported. Header might be corrupt. Cannot dump!\n", (int32_t)romHeader.GetMapMode());
-                    break;
-                }
+                SNBoardNoMMCMode20::DumpROM(romHeader, snCartIO, pFile);
+                break;
             }
-            break;
-        }
-        
-        case CoProcessor::SuperFX:
-        {
-            printf("Detected SuperFX coprocessor. Cannot dump yet!\n");
-            break;
-        }
 
-        default:
-        {
-            printf("Detected unsupported (as of yet) coprocessor. Cannot dump!\n");
-            break;
+            case MapMode::MapMode_21:
+            {
+                SNBoardNoMMCMode21::DumpROM(romHeader, snCartIO, pFile);
+                break;
+            }
+
+            default:
+            {
+                printf("Unsupported No-MMC map mode detected. Cannot upload dump.\n");
+                break;
+            }
         }
     }
-
-    printf("DumpROM: Wrote contents to file '%s'\n", romFileName);
+    else
+    {
+        // the coProcessor will inform us as to how to dump.
+        switch (romHeader.GetCoProcessor())
+        {
+            default:
+            {
+                printf("Detected unsupported (as of yet) coprocessor. Cannot dump!\n");
+                break;
+            }
+        }
+    }
     
     fclose(pFile);
     pFile = NULL;
@@ -464,12 +394,6 @@ void SuperCopierSN::ReadHeader(ROMHeader& romHeader, SNCartIO& snCartIO, uint32_
 
 void SuperCopierSN::Execute()
 {
-    // Holy crap!! 12-7: After fixing wiring last night and cleaning up my LoRom vs HiRom dumping,
-    // i have had 5 clean dumps in a row. 2 SMW, 1 Zombies, 1 Ken Griffey, and DONKEY KONG COUNTRY.
-    // DKC is significant because its HiROM, but here's the greatest part! It didnt binary compare
-    // with my known copy, but the checksum was ok. Turns out i have Rev 1 and the cleanRom is rev 0!!!
-
-
     // Setup for a game to be inserted.
     SetCartToIdleState(mSNCartIO);
     WAIT();
@@ -498,27 +422,6 @@ void SuperCopierSN::Execute()
         ReadHeader(mROMHeader, mSNCartIO, HEADER_ADDRESS_MAPMODE_25);
     }
 
-    // todo: allow re-inserting. for now, jsut abort.
-    //if (!mROMHeader.IsValid())
-    //{
-    //	printf("ERROR: Game cannot be read. Aborting...\n");
-    //	
-    //	// Configure lines for removing cartridge
-    //	SetCartToIdleState();
-    //	WAIT();
-
-    //	mResetPin.Enable();
-    //	WAIT();
-
-    //	printf("REMOVE CARTRIDGE and press any key.\n");
-    //	while (!getchar())
-    //	{
-    //	}
-
-    //	return;
-    //}
-    //
-
     char gameName[GAME_TITLE_LEN_BYTES + 1] = { 0 };
     mROMHeader.GetTitle(gameName, sizeof(gameName));
 
@@ -532,7 +435,6 @@ void SuperCopierSN::Execute()
         printf("[D]ownload from SRAM\n");
         printf("[U]pload to SRAM\n");
         printf("Dump [R]OM\n");
-        printf("Dump [F]irst Bank Only\n");
         printf("[T]est Addresses\n");
         printf("E[x]it\n");
         printf("=-=-=-=-=-=-=-\n");
@@ -568,13 +470,7 @@ void SuperCopierSN::Execute()
             
             case 'r':
             {
-                DumpROM(mROMHeader, mSNCartIO, false);
-                break;
-            }
-
-            case 'f':
-            {
-                DumpROM(mROMHeader, mSNCartIO, true);
+                DumpROM(mROMHeader, mSNCartIO);
                 break;
             }
 

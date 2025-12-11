@@ -195,6 +195,34 @@ CoProcessor ROMHeader::GetCoProcessor() const
     return CoProcessor::Unknown;
 }
 
+bool ROMHeader::HasMMC() const
+{
+    switch (GetCoProcessor())
+    {
+        case CoProcessor::None:
+        case CoProcessor::DSP:
+        case CoProcessor::OBC1:
+        {
+            return false;
+        }
+
+        case CoProcessor::SuperFX:
+        case CoProcessor::SA1:
+        case CoProcessor::Unknown:
+        {
+            return true;
+        }
+
+        default:
+        {
+            break;
+        }
+    }
+
+    // assume YES so we don't do anything destructive.
+    return true;
+}
+
 MapMode ROMHeader::GetMapMode() const
 {
     switch (mValues.mMapMode)
