@@ -14,21 +14,7 @@ SuperCopierSN& SuperCopierSN::Get()
 
 void SuperCopierSN::Create(gpiod_chip* pChip)
 {
-    // Address
-    uint8_t addressLineIndices[] = { 2,3,4,17,27,22,10,9 };
-    uint8_t latch1 = 5;
-    uint8_t latch2 = 16;
-    mAddressBus.Create(pChip, addressLineIndices, latch1, latch2);
-
-    // Data
-    uint8_t dataLineIndices[] = { 14,15,18,23,24,25,8,7 };
-    mDataBus.Create(pChip, dataLineIndices);
-
-    // Misc Pins
-    mWriteEnablePin.Create(pChip, 12);
-    mReadEnablePin.Create(pChip, 6);
-    mResetPin.Create(pChip, 21);
-    mCartEnablePin.Create(pChip, 20);
+    mSNCartIO.Create(pChip);
 }
 
 SuperCopierSN::~SuperCopierSN()
@@ -38,16 +24,10 @@ SuperCopierSN::~SuperCopierSN()
 
 void SuperCopierSN::Release()
 {
-    mCartEnablePin.Release();
-    mResetPin.Release();
-    mWriteEnablePin.Release();
-    mReadEnablePin.Release();
-
-    mDataBus.Release();
-    mAddressBus.Release();
+    mSNCartIO.Release();
 }
 
-void SuperCopierSN::UploadToSRAM_MapMode20(const ROMHeader& romHeader, uint8_t* pSRAMBuffer)
+void SuperCopierSN::UploadToSRAM_MapMode20(const ROMHeader& romHeader, SNCartIO& snCartIO, uint8_t* pSRAMBuffer)
 {
     if (!pSRAMBuffer)
     {
@@ -55,7 +35,7 @@ void SuperCopierSN::UploadToSRAM_MapMode20(const ROMHeader& romHeader, uint8_t* 
         return;
     }
 
-    SetCartToIdleState();
+    SetCartToIdleState(snCartIO);
     WAIT();
 
     uint32_t numBanks = 1;
@@ -71,59 +51,59 @@ void SuperCopierSN::UploadToSRAM_MapMode20(const ROMHeader& romHeader, uint8_t* 
 
             // To write a byte, we need to:
             // Disable writeEnable
-            mWriteEnablePin.Disable();
+            snCartIO.mWriteEnablePin.Disable();
             WAIT();
 
-            mReadEnablePin.Enable();
+            snCartIO.mReadEnablePin.Enable();
             WAIT();
 
             // Disable cartEnable (disable the ROM/SRAM chip output)
-            mCartEnablePin.Disable();
+            snCartIO.mCartEnablePin.Disable();
             WAIT();
 
             // Put the dataBus into HiZ
-            mDataBus.HiZ();
+            snCartIO.mDataBus.HiZ();
             WAIT();
 
             // Set the address where we want to write
-            mAddressBus.SetAddress(address);
+            snCartIO.mAddressBus.SetAddress(address);
             WAIT();
 
             // NOW we're ready to write the byte, so:
             // Enable cartEnable (enable the ROM/SRAM chips)
-            mCartEnablePin.Enable();
+            snCartIO.mCartEnablePin.Enable();
             WAIT();
 
             // Enable writeEnable (flips off OutputEnable on SRAM)
-            mWriteEnablePin.Enable();
+            snCartIO.mWriteEnablePin.Enable();
             WAIT();
 
-            mReadEnablePin.Disable();
+            snCartIO.mReadEnablePin.Disable();
             WAIT();
 
             // Put the byte on the dataBus
             printf("%x: %x\n", address, pSRAMBuffer[i]);
-            mDataBus.Write(pSRAMBuffer[i]);
+            snCartIO.mDataBus.Write(pSRAMBuffer[i]);
             WAIT();
 
             // Disable writeEnable so SRAM can latch the bytes
-            mWriteEnablePin.Disable();
+            snCartIO.mWriteEnablePin.Disable();
             WAIT();
 
-            mReadEnablePin.Enable();
+            snCartIO.mReadEnablePin.Enable();
             WAIT();
 
             // Put the dataBus into HiZ
-            mDataBus.HiZ();
+            snCartIO.mDataBus.HiZ();
             WAIT();
 
             // Disable cartEnable (disable the ROM/SRAM chips)
-            mCartEnablePin.Disable();
+            snCartIO.mCartEnablePin.Disable();
             WAIT();
         }
     }
 
-    SetCartToIdleState();
+    SetCartToIdleState(snCartIO);
     WAIT();
 
     /*char sramFileName[300] = { 0 };
@@ -211,7 +191,7 @@ void SuperCopierSN::UploadToSRAM_MapMode20(const ROMHeader& romHeader, uint8_t* 
     printf("UploadToSRAM: Uploaded contents of file '%s' to cart SRAM.\n", sramFileName);*/
 }
 
-void SuperCopierSN::UploadToSRAM(const ROMHeader& romHeader)
+void SuperCopierSN::UploadToSRAM(const ROMHeader& romHeader, SNCartIO& snCartIO)
 {
     char romTitle[GAME_TITLE_LEN_BYTES + 1] = { 0 };
     romHeader.GetTitle(romTitle, sizeof(romTitle));
@@ -242,7 +222,7 @@ void SuperCopierSN::UploadToSRAM(const ROMHeader& romHeader)
                     if (romHeader.GetRAMSizeBytes() <= MAP_MODE_20_21_SRAM_MAX_SHIPPED_SIZE)
                     {
                         printf("Uploading SRAM with No CoProcessor or DSP, MapMode 20 (LoROM)\n");
-                        UploadToSRAM_MapMode20(romHeader, mSRAMBuffer);
+                        UploadToSRAM_MapMode20(romHeader, snCartIO, mSRAMBuffer);
                     }
                     else
                     {
@@ -256,7 +236,7 @@ void SuperCopierSN::UploadToSRAM(const ROMHeader& romHeader)
                     if (romHeader.GetRAMSizeBytes() <= MAP_MODE_20_21_SRAM_MAX_SHIPPED_SIZE)
                     {
                         printf("Uploading SRAM with No CoProcessor or DSP, MapMode 21 (HiROM)\n");
-                        UploadToSRAM_MapMode20(romHeader, mSRAMBuffer);
+                        UploadToSRAM_MapMode20(romHeader, snCartIO, mSRAMBuffer);
                     }
                     else
                     {
@@ -296,7 +276,7 @@ void SuperCopierSN::UploadToSRAM(const ROMHeader& romHeader)
     printf("UploadToSRAM: Uploaded contents of file '%s' to cart SRAM\n", sramFileName);
 }
 
-void SuperCopierSN::DownloadFromSRAM(const ROMHeader& romHeader)
+void SuperCopierSN::DownloadFromSRAM(const ROMHeader& romHeader, SNCartIO& snCartIO)
 {
     char romTitle[GAME_TITLE_LEN_BYTES + 1] = { 0 };
     romHeader.GetTitle(romTitle, sizeof(romTitle));
@@ -323,7 +303,7 @@ void SuperCopierSN::DownloadFromSRAM(const ROMHeader& romHeader)
                     if (romHeader.GetRAMSizeBytes() <= MAP_MODE_20_21_SRAM_MAX_SHIPPED_SIZE)
                     {
                         printf("Downloading SRAM with No CoProcessor or DSP, MapMode 20 (LoROM)\n");
-                        DownloadFromSRAM_MapMode20(romHeader, pFile);
+                        DownloadFromSRAM_MapMode20(romHeader, snCartIO, pFile);
                     }
                     else
                     {
@@ -338,7 +318,7 @@ void SuperCopierSN::DownloadFromSRAM(const ROMHeader& romHeader)
                     {
                         printf("Downloading SRAM with No CoProcessor or DSP, MapMode 21 (HiROM)\n");
                         //todo: need to handle game specific diffs for games using the uncommon 0x10 starting bank.
-                        DownloadFromSRAM_MapMode21(romHeader, MAP_MODE_21_SRAM_START_BANK_COMMON_START, pFile);
+                        DownloadFromSRAM_MapMode21(romHeader, snCartIO, MAP_MODE_21_SRAM_START_BANK_COMMON_START, pFile);
                     }
                     else
                     {
@@ -381,7 +361,7 @@ void SuperCopierSN::DownloadFromSRAM(const ROMHeader& romHeader)
     pFile = NULL;
 }
 
-void SuperCopierSN::DownloadFromSRAM_MapMode20(const ROMHeader& romHeader, FILE* pOutFile)
+void SuperCopierSN::DownloadFromSRAM_MapMode20(const ROMHeader& romHeader, SNCartIO& snCartIO, FILE* pOutFile)
 {
     if (!pOutFile)
     {
@@ -389,7 +369,7 @@ void SuperCopierSN::DownloadFromSRAM_MapMode20(const ROMHeader& romHeader, FILE*
         return;
     }
 
-    SetCartToIdleState();
+    SetCartToIdleState(snCartIO);
     WAIT();
 
     // LoROM (Memory Map 20) sram is stored in bank 0x70
@@ -401,37 +381,37 @@ void SuperCopierSN::DownloadFromSRAM_MapMode20(const ROMHeader& romHeader, FILE*
 
         // To read a byte we need to:
         // disable cart output (disable rom/sram chips. This is only true on LoROM)
-        mCartEnablePin.Disable();
+        snCartIO.mCartEnablePin.Disable();
         WAIT();
 
         // set the address for the byte we want to read
-        mAddressBus.SetAddress(address);
+        snCartIO.mAddressBus.SetAddress(address);
         WAIT();
 
         // Set the dataBus to HiZ
-        mDataBus.HiZ();
+        snCartIO.mDataBus.HiZ();
         WAIT();
 
         // enable the cart output (enable the rom/sram chips)
-        mCartEnablePin.Enable();
+        snCartIO.mCartEnablePin.Enable();
         WAIT();
 
-        uint8_t value = mDataBus.Read();
+        uint8_t value = snCartIO.mDataBus.Read();
         WAIT();
 
         fwrite(&value, 1, 1, pOutFile);
             
-        mDataBus.HiZ();
+        snCartIO.mDataBus.HiZ();
         WAIT();
     }
 
     fflush(pOutFile);
 
-    SetCartToIdleState();
+    SetCartToIdleState(snCartIO);
     WAIT();
 }
 
-void SuperCopierSN::DownloadFromSRAM_MapMode21(const ROMHeader& romHeader, uint32_t startingBank, FILE* pOutFile)
+void SuperCopierSN::DownloadFromSRAM_MapMode21(const ROMHeader& romHeader, SNCartIO& snCartIO, uint32_t startingBank, FILE* pOutFile)
 {
     if (!pOutFile)
     {
@@ -439,7 +419,7 @@ void SuperCopierSN::DownloadFromSRAM_MapMode21(const ROMHeader& romHeader, uint3
         return;
     }
 
-    SetCartToIdleState();
+    SetCartToIdleState(snCartIO);
     WAIT();
 
     // HiROM (Memory Map 21) sram is stored in bank 0x20
@@ -464,38 +444,38 @@ void SuperCopierSN::DownloadFromSRAM_MapMode21(const ROMHeader& romHeader, uint3
             // todo: write wrapper functions to make this part more readable
             // To read a byte we need to:
             
-            mCartEnablePin.Enable(); //Turn OFF Sram
+            snCartIO.mCartEnablePin.Enable(); //Turn OFF Sram
             WAIT();
 
             // set the address for the byte we want to read
-            mAddressBus.SetAddress(address);
+            snCartIO.mAddressBus.SetAddress(address);
             WAIT();
 
             // Set the dataBus to HiZ
-            mDataBus.HiZ();
+            snCartIO.mDataBus.HiZ();
             WAIT();
 
-            mCartEnablePin.Disable(); //Turn ON sram
+            snCartIO.mCartEnablePin.Disable(); //Turn ON sram
             WAIT();
 
-            uint8_t value = mDataBus.Read();
+            uint8_t value = snCartIO.mDataBus.Read();
             WAIT();
 
             //printf("Address: %x, Value: %d\n", address, value);
             fwrite(&value, 1, 1, pOutFile);
 
-            mDataBus.HiZ();
+            snCartIO.mDataBus.HiZ();
             WAIT();
         }
     }
 
     fflush(pOutFile);
 
-    SetCartToIdleState();
+    SetCartToIdleState(snCartIO);
     WAIT();
 }
-
-void SuperCopierSN::DumpROM(const ROMHeader& romHeader, bool firstBankOnly)
+                    
+void SuperCopierSN::DumpROM(const ROMHeader& romHeader, SNCartIO& snCartIO, bool firstBankOnly)
 {
     char romTitle[GAME_TITLE_LEN_BYTES + 1] = { 0 };
     romHeader.GetTitle(romTitle, sizeof(romTitle));
@@ -520,14 +500,14 @@ void SuperCopierSN::DumpROM(const ROMHeader& romHeader, bool firstBankOnly)
                 case MapMode::MapMode_20:
                 {
                     printf("Dumping ROM with No CoProcessor or DSP, MapMode 20 (LoROM)\n");
-                    DumpROM_MapMode20(romHeader, pFile, firstBankOnly); 
+                    DumpROM_MapMode20(romHeader, snCartIO, pFile, firstBankOnly);
                     break;
                 }
 
                 case MapMode::MapMode_21:
                 {
                     printf("Dumping ROM with No CoProcessor or DSP, MapMode 21 (HiROM)\n");
-                    DumpROM_MapMode21(romHeader, pFile, firstBankOnly);
+                    DumpROM_MapMode21(romHeader, snCartIO, pFile, firstBankOnly);
                     break;
                 }
                 case MapMode::MapMode_25:
@@ -564,7 +544,7 @@ void SuperCopierSN::DumpROM(const ROMHeader& romHeader, bool firstBankOnly)
     pFile = NULL;
 }
 
-void SuperCopierSN::DumpROM_MapMode20(const ROMHeader& romHeader, FILE* pOutFile, bool firstBankOnly)
+void SuperCopierSN::DumpROM_MapMode20(const ROMHeader& romHeader, SNCartIO& snCartIO, FILE* pOutFile, bool firstBankOnly)
 {
     if (!pOutFile)
     {
@@ -572,7 +552,7 @@ void SuperCopierSN::DumpROM_MapMode20(const ROMHeader& romHeader, FILE* pOutFile
         return;
     }
 
-    SetCartToIdleState();
+    SetCartToIdleState(snCartIO);
     WAIT();
 
     uint32_t numBanks = firstBankOnly ? 1 : romHeader.GetNumBanks();
@@ -587,34 +567,34 @@ void SuperCopierSN::DumpROM_MapMode20(const ROMHeader& romHeader, FILE* pOutFile
             uint32_t address = (c << 16) | (i + MAP_MODE_20_ROM_BANK_BASE_ADDRESS);
 
             // Disable the cartEnable for map mode 20, this does disable both ROM & SRAM
-            mCartEnablePin.Disable();
+            snCartIO.mCartEnablePin.Disable();
 
             // Set the address to read a byte from
-            mAddressBus.SetAddress(address);
+            snCartIO.mAddressBus.SetAddress(address);
 
             // Set the dataBus to HiZ
-            mDataBus.HiZ();
+            snCartIO.mDataBus.HiZ();
 
             // Now we're read, so enable the cartEnable
-            mCartEnablePin.Enable();
+            snCartIO.mCartEnablePin.Enable();
             WAIT();
 
             // Grab the byte off the lines
-            uint8_t value = mDataBus.Read();
+            uint8_t value = snCartIO.mDataBus.Read();
 
             fwrite(&value, 1, 1, pOutFile);
 
-            mDataBus.HiZ();
+            snCartIO.mDataBus.HiZ();
         }
 
         fflush(pOutFile);
     }
 
-    SetCartToIdleState();
+    SetCartToIdleState(snCartIO);
     WAIT();
 }
 
-void SuperCopierSN::DumpROM_MapMode21(const ROMHeader& romHeader, FILE* pOutFile, bool firstBankOnly)
+void SuperCopierSN::DumpROM_MapMode21(const ROMHeader& romHeader, SNCartIO& snCartIO, FILE* pOutFile, bool firstBankOnly)
 {
     if (!pOutFile)
     {
@@ -622,7 +602,7 @@ void SuperCopierSN::DumpROM_MapMode21(const ROMHeader& romHeader, FILE* pOutFile
         return;
     }
 
-    SetCartToIdleState();
+    SetCartToIdleState(snCartIO);
     WAIT();
 
     uint32_t numBanks = firstBankOnly ? 1 : romHeader.GetNumBanks();
@@ -637,52 +617,52 @@ void SuperCopierSN::DumpROM_MapMode21(const ROMHeader& romHeader, FILE* pOutFile
             uint32_t address = (c << 16) | (i + MAP_MODE_21_ROM_BANK_BASE_ADDRESS);
 
             // Disable the cartEnable (disables ROM. For MAD-1 games w/ SRAM, does enable SRAM)
-            mCartEnablePin.Disable();
+            snCartIO.mCartEnablePin.Disable();
 
             // Set the address to read a byte from
-            mAddressBus.SetAddress(address);
+            snCartIO.mAddressBus.SetAddress(address);
 
             // Set the dataBus to HiZ
-            mDataBus.HiZ();
+            snCartIO.mDataBus.HiZ();
 
             // Now we're ready, so enable the cartEnable
-            mCartEnablePin.Enable();
+            snCartIO.mCartEnablePin.Enable();
             WAIT();
 
             // Grab the byte off the lines
-            uint8_t value = mDataBus.Read();
+            uint8_t value = snCartIO.mDataBus.Read();
 
             fwrite(&value, 1, 1, pOutFile);
 
-            mDataBus.HiZ();
+            snCartIO.mDataBus.HiZ();
         }
 
         fflush(pOutFile);
     }
 
-    SetCartToIdleState();
+    SetCartToIdleState(snCartIO);
     WAIT();
 }
 
-void SuperCopierSN::SetCartToIdleState()
+void SuperCopierSN::SetCartToIdleState(SNCartIO& snCartIO)
 {
     // Disable writeEnable
-    mWriteEnablePin.Disable();
+    snCartIO.mWriteEnablePin.Disable();
     WAIT();
 
-    mReadEnablePin.Enable();
+    snCartIO.mReadEnablePin.Enable();
     WAIT();
 
     // Put the cartEnable into HiZ
-    mCartEnablePin.HiZ();
+    snCartIO.mCartEnablePin.HiZ();
     WAIT();
 
     // Put the dataBus into HiZ
-    mDataBus.HiZ();
+    snCartIO.mDataBus.HiZ();
     WAIT();
 
     // put the address into HiZ
-    mAddressBus.HiZ();
+    snCartIO.mAddressBus.HiZ();
     WAIT();
 }
 
@@ -754,9 +734,9 @@ void SuperCopierSN::PrintGameInfo(const ROMHeader& romHeader)
     printf("=-=-=-=-=-\n");
 }
 
-void SuperCopierSN::TestAddresses()
+void SuperCopierSN::TestAddresses(SNCartIO& snCartIO)
 {
-    SetCartToIdleState();
+    SetCartToIdleState(snCartIO);
     WAIT();
 
     printf("Setting Cart State to Idle\n");
@@ -775,28 +755,28 @@ void SuperCopierSN::TestAddresses()
     for (uint32_t i = 0; i < 0xFFFFFF; i++)
     {
         // Disable the cartEnable (disable the rom/sram chips)
-        mCartEnablePin.Disable();
+        snCartIO.mCartEnablePin.Disable();
         WAIT();
 
         // Set the address to read a byte from
         printf("Setting Address to: %x\n", i);
-        mAddressBus.SetAddress(i);
+        snCartIO.mAddressBus.SetAddress(i);
         WAIT();
 
         // Set the dataBus to HiZ
-        mDataBus.HiZ();
+        snCartIO.mDataBus.HiZ();
         WAIT();
 
         // Now we're read, so enable the cartEnable
-        mCartEnablePin.Enable();
+        snCartIO.mCartEnablePin.Enable();
         WAIT();
 
         // Grab the byte off the lines
-        uint8_t value = mDataBus.Read();
+        uint8_t value = snCartIO.mDataBus.Read();
         WAIT();
         printf("Address %x: Data %x\n", i, value);
 
-        mDataBus.HiZ();
+        snCartIO.mDataBus.HiZ();
         WAIT();
         
         printf("Press X to stop. Press any other key to continue.\n");
@@ -809,7 +789,9 @@ void SuperCopierSN::TestAddresses()
             {
                 inputChoice = c;
             }
-        } while (c != '\n');
+        } 
+        while (c != '\n');
+
         if (inputChoice == 'x')
         {
             break;
@@ -817,41 +799,41 @@ void SuperCopierSN::TestAddresses()
     }
 }
 
-void SuperCopierSN::ReadHeader(ROMHeader& romHeader, uint32_t romHeaderAddress)
+void SuperCopierSN::ReadHeader(ROMHeader& romHeader, SNCartIO& snCartIO, uint32_t romHeaderAddress)
 {
     romHeader.Reset();
 
-    SetCartToIdleState();
+    SetCartToIdleState(snCartIO);
     WAIT();
 
     // Disable the cartEnable (disable the rom/sram chips)
-    mCartEnablePin.Disable();
+    snCartIO.mCartEnablePin.Disable();
     WAIT();
 
     for (uint32_t i = 0; i < ROM_HEADER_SIZE_BYTES; i++)
     {
         // Disable the cartEnable (disable the rom/sram chips)
-        mCartEnablePin.Disable();
+        snCartIO.mCartEnablePin.Disable();
         WAIT();
 
         // Set the address to read a byte from
-        mAddressBus.SetAddress(i + romHeaderAddress);
+        snCartIO.mAddressBus.SetAddress(i + romHeaderAddress);
         WAIT();
 
         // Set the dataBus to HiZ
-        mDataBus.HiZ();
+        snCartIO.mDataBus.HiZ();
         WAIT();
 
         // Now we're read, so enable the cartEnable
-        mCartEnablePin.Enable();
+        snCartIO.mCartEnablePin.Enable();
         WAIT();
 
         // Grab the byte off the lines
-        uint8_t value = mDataBus.Read();
+        uint8_t value = snCartIO.mDataBus.Read();
         WAIT();
         romHeader.mBuffer[i] = value;
         
-        mDataBus.HiZ();
+        snCartIO.mDataBus.HiZ();
         WAIT();
     }
 }
@@ -865,13 +847,13 @@ void SuperCopierSN::Execute()
 
 
     // Setup for a game to be inserted.
-    SetCartToIdleState();
+    SetCartToIdleState(mSNCartIO);
     WAIT();
 
     // Enable the Reset Pin so the SRAM (if there is one) draws from battery and not 5v)
     // it's critical that we ENABLE Reset, so that the transistor for sram (if there is one)
     // doesn't toggle to 5v the moment it touches the 5v line, causing bits to suddenly flip.
-    mResetPin.Enable();
+    mSNCartIO.mResetPin.Enable();
     WAIT();
     
     printf("INSERT GAME and press any key.\n");
@@ -880,16 +862,16 @@ void SuperCopierSN::Execute()
     }
 
     // Set Reset High so we send sram 5v and can read/write.
-    mResetPin.Disable();
+    mSNCartIO.mResetPin.Disable();
     WAIT();
 
     // try reading the header and checking it. If its no good, see if its HiRom
     printf("CHECKING ROM HEADER\n");
     printf("=-=-=-=-=-=-=-=-=-=\n");
-    ReadHeader(mROMHeader, HEADER_ADDRESS_MAPMODE_NOT_25);
+    ReadHeader(mROMHeader, mSNCartIO, HEADER_ADDRESS_MAPMODE_NOT_25);
     if (!mROMHeader.IsValid())
     {
-        ReadHeader(mROMHeader, HEADER_ADDRESS_MAPMODE_25);
+        ReadHeader(mROMHeader, mSNCartIO, HEADER_ADDRESS_MAPMODE_25);
     }
 
     // todo: allow re-inserting. for now, jsut abort.
@@ -950,31 +932,31 @@ void SuperCopierSN::Execute()
         {
             case 'd':
             {
-                DownloadFromSRAM(mROMHeader);
+                DownloadFromSRAM(mROMHeader, mSNCartIO);
                 break;
             }
             
             case 'u':
             {
-                UploadToSRAM(mROMHeader);
+                UploadToSRAM(mROMHeader, mSNCartIO);
                 break;
             }
             
             case 'r':
             {
-                DumpROM(mROMHeader, false);
+                DumpROM(mROMHeader, mSNCartIO, false);
                 break;
             }
 
             case 'f':
             {
-                DumpROM(mROMHeader, true);
+                DumpROM(mROMHeader, mSNCartIO, true);
                 break;
             }
 
             case 't':
             {
-                TestAddresses();
+                TestAddresses(mSNCartIO);
                 break;
             }
             
@@ -993,10 +975,10 @@ void SuperCopierSN::Execute()
     }
     
     // Configure lines for removing cartridge
-    SetCartToIdleState();
+    SetCartToIdleState(mSNCartIO);
     WAIT();
 
-    mResetPin.Enable();
+    mSNCartIO.mResetPin.Enable();
     WAIT();
         
     printf("REMOVE CARTRIDGE and press any key.\n");

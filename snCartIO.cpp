@@ -1,17 +1,6 @@
 
 #include "snCartIO.h"
 
-#include <cstring>
-#include <stdio.h>
-#include <unistd.h>
-#include "defines.h"
-
-SNCartIO& SNCartIO::Get()
-{
-    static SNCartIO Instance;
-    return Instance;
-}
-
 void SNCartIO::Create(gpiod_chip* pChip)
 {
     // Address
@@ -36,7 +25,7 @@ SNCartIO::~SNCartIO()
     Release();
 }
 
-void SuperCopierSN::Release()
+void SNCartIO::Release()
 {
     mCartEnablePin.Release();
     mResetPin.Release();
