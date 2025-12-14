@@ -8,6 +8,24 @@
 #include "snBoardNoMMCMode20.h"
 #include "snBoardNoMMCMode21.h"
 
+/*
+* A $49 SNES cartridge health checker and save manager.
+
+• Instantly tells you whether a game cartridge is electrically stable or failing
+• Detects hidden ROM corruption that won’t show up at the title screen
+• Backup and restore SRAM saves (including writing saves back to carts)
+• Optional ROM dumping for personal archiving
+
+Know whether a game is worth keeping before the return window closes.
+
+"This device has been physically tested against every officially released SNES cartridge."
+bonus points, i should hunt down every variant too.
+I even ordered games from japan
+
+setup a table with games at ridiculous save percentages, and obvious visuals of bad vs good games.
+tlel someone "go buy a game somewhere, and bring it here to test"
+*/
+
 SuperCopierSN& SuperCopierSN::Get()
 {
     static SuperCopierSN Instance;
@@ -141,19 +159,141 @@ void SuperCopierSN::DownloadFromSRAM(const ROMHeader& romHeader, SNCartIO& snCar
     fclose(pFile);
     pFile = NULL;
 }
+
+uint16_t SuperCopierSN::CalcChecksum(const char* pFileName)
+{
+    FILE* pFile = fopen(pFileName, "rb");
+    if (!pFile)
+    {
+        printf("Can't compute checksum. Couldn't open file '%s'!\n", pFileName);
+        return 0;
+    }
+
+    // calc checksum
+    fseek(pFile, 0, SEEK_END);
+
+    uint32_t size = ftell(pFile);
+    fseek(pFile, 0, SEEK_SET);
+
+    uint16_t checkSum = 0;
+    for (uint32_t i = 0; i < size; i++)
+    {
+        uint8_t byte = 0;
+        fread(&byte, 1, 1, pFile);
+
+        checkSum += byte;
+    }
+
+    return checkSum;
+}
+
+bool SuperCopierSN::CompareDumps(const char* pFileNameA, const char* pFileNameB)
+{
+    FILE* pFileA = nullptr;
+    FILE* pFileB = nullptr;
+
+    bool success = false;
+
+    do
+    {
+        pFileA = fopen(pFileNameA, "rb");
+        if (!pFileA)
+        {
+            printf("CompareDumps: Couldn't open file '%s' for A comparison\n", pFileNameA);
+            break;
+        }
+
+        pFileB = fopen(pFileNameB, "rb");
+        if (!pFileB)
+        {
+            printf("CompareDumps: Couldn't open file '%s' for B comparison\n", pFileNameB);
+            break;
+        }
+
+        // check lengths
+        fseek(pFileA, 0, SEEK_END);
+        fseek(pFileB, 0, SEEK_END);
+
+        uint32_t sizeA = ftell(pFileA);
+        uint32_t sizeB = ftell(pFileB);
+        if (sizeA != sizeB)
+        {
+            printf("CompareDumps: Size checks failed. A != B. SizeA: '%d', SizeB: '%d'\n", sizeA, sizeB);
+            break;
+        }
+
+        fseek(pFileA, 0, SEEK_SET);
+        fseek(pFileB, 0, SEEK_SET);
+
+        // check 4 bytes at a time
+        uint32_t fourBytesA = 0;
+        uint32_t fourBytesB = 0;
+
+        uint32_t i = 0;
+        for (i = 0; i < sizeA; i++)
+        {
+            fread(&fourBytesA, sizeof(fourBytesA), 1, pFileA);
+            fread(&fourBytesB, sizeof(fourBytesB), 1, pFileB);
+
+            if (fourBytesA != fourBytesB)
+            {
+                printf("CompareDumps: Comparison failed! The 4 bytes at file offset '%ld' did not match. A: %x, B: %x\n", ftell(pFileA),  fourBytesA, fourBytesB);
+                break;
+            }
+        }
+
+        if (i == sizeA)
+        {
+            success = true;
+        }
+    }
+    while(0);
+
+    if (pFileA)
+    {
+        fclose(pFileA);
+        pFileA = nullptr;
+    }
+
+    if (pFileB)
+    {
+        fclose(pFileB);
+        pFileB = nullptr;
+    }
+
+    return success;
+}
       
 void SuperCopierSN::DumpROM(const ROMHeader& romHeader, SNCartIO& snCartIO)
 {
     char romTitle[GAME_TITLE_LEN_BYTES + 1] = { 0 };
     romHeader.GetTitle(romTitle, sizeof(romTitle));
 
-    char romFileName[300] = { 0 };
-    snprintf(romFileName, sizeof(romFileName) - 1, "./%s_ROMVER_%d.%s", romTitle, romHeader.GetRomVersion(), ROM_EXTENSION);
+    char romFileNameVanilla[300] = { 0 };
+    snprintf(romFileNameVanilla, sizeof(romFileNameVanilla) - 1, "./%s_ROMVER_%d.%s", romTitle, romHeader.GetRomVersion(), ROM_EXTENSION);
 
-    FILE* pFile = fopen(romFileName, "wb");
-    if (!pFile)
+    char romFileNameA[300] = { 0 };
+    snprintf(romFileNameA, sizeof(romFileNameA) - 1, "./%s_ROMVER_%d_A.%s", romTitle, romHeader.GetRomVersion(), ROM_EXTENSION);
+
+    char romFileNameB[300] = { 0 };
+    snprintf(romFileNameB, sizeof(romFileNameB) - 1, "./%s_ROMVER_%d_B.%s", romTitle, romHeader.GetRomVersion(), ROM_EXTENSION);
+
+    FILE* pFileA = fopen(romFileNameA, "wb");
+    if (!pFileA)
     {
-        printf("Failed to open file '%s' for write!\n", romFileName);
+        printf("Failed to open file '%s' for write!\n", romFileNameA);
+        return;
+    }
+
+    FILE* pFileB = fopen(romFileNameB, "wb");
+    if (!pFileB)
+    {
+        printf("Failed to open file '%s' for write!\n", romFileNameB);
+
+        if (pFileA)
+        {
+            fclose(pFileA);
+        }
         return;
     }
 
@@ -164,13 +304,88 @@ void SuperCopierSN::DumpROM(const ROMHeader& romHeader, SNCartIO& snCartIO)
         {
             case MapMode::MapMode_20:
             {
-                SNBoardNoMMCMode20::DumpROM(romHeader, snCartIO, pFile);
+                // dump it twice.
+                SNBoardNoMMCMode20::DumpROM(romHeader, snCartIO, pFileA);
+                SNBoardNoMMCMode20::DumpROM(romHeader, snCartIO, pFileB);
+
+                if (CompareDumps(romFileNameA, romFileNameB))
+                {
+                    // Now for final chef's kiss, validate the checksum.
+                    uint16_t checkSum = CalcChecksum(romFileNameA);
+                    if (checkSum == romHeader.GetChecksum() && (checkSum ^ 0xFFFF) == romHeader.GetChecksumComplement())
+                    {
+                        printf("ROM data is stable and internally consistent. No evidence of corruption or physical degradation was detected.\n");
+                        printf("Your game is 100%% healthy, and your ROM image is too.\n");
+                    }
+                    else
+                    {
+                        // todo: see if the checksum I read at least matches the internal header's
+                        //#define CHECKSUM_COMPLEMENT_ADDRESS 0x7FDC
+
+
+                        printf("“ROM data is electrically stable. Header checksum does not match; this is commonly due to an incorrect checksum in the cartridge header and does not, by itself, indicate ROM failure.”\n");
+                    }
+
+                    rename(romFileNameA, romFileNameVanilla);
+                    unlink(romFileNameB);
+                }
+                // dumps didn't match
+                else
+                {
+                    // so does rom A's checksum match the header? if so, just take it.
+                    printf("Rom dumps don't match. Checking to see if one of the two has a valid checksum.\n");
+                    uint16_t checksumA = CalcChecksum(romFileNameA);
+                    if (checksumA == romHeader.GetChecksum())
+                    {
+                        printf("ROM appears intact but exhibited transient read instability.”\n");
+                        rename(romFileNameA, romFileNameVanilla);
+                        unlink(romFileNameB);
+                        break;
+                    }
+                    else
+                    {
+                        printf("ROM A's checksum doesn't match\n");
+                    }
+                    
+                    // what about B's?
+                    uint16_t checksumB = CalcChecksum(romFileNameB);
+                    if (checksumB == romHeader.GetChecksum())
+                    {
+                        printf("ROM appears intact but exhibited transient read instability.”\n");
+                        rename(romFileNameB, romFileNameVanilla);
+                        unlink(romFileNameA);
+                        break;
+                    }
+                    else
+                    {
+                        printf("ROM B's checksum doesn't match.\n");
+                    }
+
+                    // so we've got two garbage dumps. lets try in recovery mode.
+                    printf("Neither ROM dump had a good checksum, and neither matched byte for byte. Doing a dump in recovery mode.\n");
+                    FILE* pFile = fopen(romFileNameVanilla, "wb");
+                    if (!pFile)
+                    {
+                        printf("Couldnt open file '%s' for dumping a recovery ROM\n", romFileNameVanilla);
+                        break;
+                    }
+                    SNBoardNoMMCMode20::DumpROM_RecoveryMode(romHeader, snCartIO, pFile);
+                    printf("Restoration dump complete. I got what I could, but this is in NO WAY a safe ROM\n");
+                }
+
+                //Solid	Dumps match, checksum matches
+                //    Stable(Checksum mismatch)	Dumps match, checksum fails
+                //    Marginal	Dumps differ, one checksum matches
+                //    Failing	Dumps differ, neither checksum matches
+                //    Degraded(Recovered)	Required multi - sampling
+
+                printf("Final ROM should be: '%s'", romFileNameVanilla);
                 break;
             }
 
             case MapMode::MapMode_21:
             {
-                SNBoardNoMMCMode21::DumpROM(romHeader, snCartIO, pFile);
+                SNBoardNoMMCMode21::DumpROM(romHeader, snCartIO, pFileA);
                 break;
             }
 
@@ -194,8 +409,17 @@ void SuperCopierSN::DumpROM(const ROMHeader& romHeader, SNCartIO& snCartIO)
         }
     }
     
-    fclose(pFile);
-    pFile = NULL;
+    if (pFileA)
+    {
+        fclose(pFileA);
+        pFileA = NULL;
+    }
+
+    if (pFileB)
+    {
+        fclose(pFileB);
+        pFileB = NULL;
+    }
 }
 
 void SuperCopierSN::SetCartToIdleState(SNCartIO& snCartIO)

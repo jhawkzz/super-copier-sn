@@ -125,6 +125,80 @@ void SNBoardNoMMCMode20::DownloadFromSRAM(const ROMHeader& romHeader, SNCartIO& 
     SetCartToIdleState(snCartIO);
 }
 
+void SNBoardNoMMCMode20::DumpROM_RecoveryMode(const ROMHeader& romHeader, SNCartIO& snCartIO, FILE* pOutFile)
+{
+    if (!pOutFile)
+    {
+        printf("No file handle provided for dumping!\n");
+        return;
+    }
+
+    // This will do a 5x sample of each address and take the majority byte returned.
+    // In the event of a tie, it takes the lowest byte (arbitrary).
+    // We do this to be as "true" as possible, in the sense that its a value the ROM really did report,
+    // whether accurate and intended by the developer or not.
+
+    // working byte recoverer
+    uint32_t numChecks = 5;
+    uint8_t frequencyBuffer[256] = { 0 };
+
+    for (uint32_t c = MAP_MODE_20_ROM_START_BANK; c < MAP_MODE_20_ROM_START_BANK + romHeader.GetNumBanks(); c++)
+    {
+        printf("Dumping Bank (in Recovery Mode): $%x\n", c);
+
+        for (uint32_t i = 0; i < MAP_MODE_20_BANK_SIZE; i++)
+        {
+            uint32_t address = (c << 16) | (i + MAP_MODE_20_ROM_BANK_BASE_ADDRESS);
+
+            // reset the buffer.
+            for (uint32_t j = 0; j < sizeof(frequencyBuffer); j++)
+            {
+                frequencyBuffer[j] = 0;
+            }
+
+            // read each byte NUMCHECKS times and take the most hit byte.
+            //printf("Sampling address: 0x%x %d times.\n", address, numChecks);
+            for (uint32_t d = 0; d < numChecks; d++)
+            {
+                // Disable the chips
+                DisableROMAndSRAMChips(snCartIO);
+
+                // Set the address to read a byte from
+                snCartIO.mAddressBus.SetAddress(address);
+
+                // Set the dataBus to HiZ
+                snCartIO.mDataBus.HiZ();
+
+                // Now we're read, so enable the cartEnable
+                EnableROMAndSRAMChips(snCartIO);
+
+                // Grab the byte off the lines
+                uint8_t value = snCartIO.mDataBus.Read();
+                
+                frequencyBuffer[value] += 1;
+
+                snCartIO.mDataBus.HiZ();
+            }
+
+            // now take the byte with the best hit rate
+            uint8_t bestByteIndex = 0;
+            for (uint32_t d = 0; d < 256; d++)
+            {
+                if (frequencyBuffer[d] > frequencyBuffer[bestByteIndex])
+                {
+                    bestByteIndex = d;
+                }
+            }
+
+            fwrite(&bestByteIndex, 1, 1, pOutFile);
+        }
+
+        fflush(pOutFile);
+    }
+
+    SetCartToIdleState(snCartIO);
+}
+
 void SNBoardNoMMCMode20::DumpROM(const ROMHeader& romHeader, SNCartIO& snCartIO, FILE* pOutFile)
 {
     if (!pOutFile)

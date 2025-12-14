@@ -128,6 +128,23 @@ to write: pinctrl set 12 op dh
 To read: pinctrl get 12
 
 
+Put this in /boot/firmware/config.txt to at least put pins in a somewhat safe state
+# WriteEnable op dh so that its DISABLED
+gpio=12=op,dh
+
+# ReadEnable op dl so that its ENABLED
+gpio=6=op,dl
+
+# ResetEnable op dl so that its ENABLED (keep power from the battery)
+gpio=21=op,dl
+
+# CartEnable ip np so that its HiZ
+gpio=20=ip,np
+
+#address, latch and data lines in HiZ
+gpio=2,3,4,17,27,22,10,9,5,16,14,15,18,23,24,25,8,7=ip,np
+
+
    SNES (front) | Cart  |  SNES (back)
                   _______
                  |       |

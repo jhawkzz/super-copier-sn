@@ -15,6 +15,7 @@ public:
 	static void DownloadFromSRAM(const ROMHeader& romHeader, SNCartIO& snCartIO, FILE* pOutFile);
 	
 	static void DumpROM(const ROMHeader& romHeader, SNCartIO& snCartIO, FILE* pOutFile);
+	static void DumpROM_RecoveryMode(const ROMHeader& romHeader, SNCartIO& snCartIO, FILE* pOutFile);
 
 private:
 	static void SetCartToIdleState(SNCartIO& snCartIO);

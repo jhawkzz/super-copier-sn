@@ -30,6 +30,9 @@ private:
 
 	void ReadHeader(ROMHeader& romHeader, SNCartIO& snCartIO, uint32_t romHeaderAddress);
 
+	bool CompareDumps(const char* pFileNameA, const char* pFileNameB);
+	uint16_t CalcChecksum(const char* pFileName);
+
 	void TestAddresses(SNCartIO& snCartIO);
 
 private:
